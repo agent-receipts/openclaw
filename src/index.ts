@@ -13,7 +13,7 @@ import { openStore } from "@attest-protocol/attest-ts";
 
 import { resolveConfig, loadOrCreateKeys } from "./config.js";
 import { loadCustomMappings } from "./classify.js";
-import { beforeToolCall, afterToolCall, type HookDeps } from "./hooks.js";
+import { beforeToolCall, afterToolCall, clearPending, type HookDeps } from "./hooks.js";
 import { resetChain, getChainId } from "./chain.js";
 import { createQueryReceiptsTool, createVerifyChainTool } from "./tools.js";
 
@@ -57,11 +57,12 @@ export default definePluginEntry({
 
     // --- Hooks ---
 
-    // Reset chain on new session
+    // Reset chain and clear pending stash on new session
     api.on("session_start", (_event, ctx) => {
       const sessionKey = ctx.sessionKey ?? "default";
       const sessionId = ctx.sessionId;
       resetChain(sessionKey, sessionId);
+      clearPending();
       api.logger.info(`attest: new chain for session ${sessionKey}`);
     });
 

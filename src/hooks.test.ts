@@ -6,7 +6,7 @@ import {
   sha256,
   type ReceiptStore,
 } from "@attest-protocol/attest-ts";
-import { beforeToolCall, afterToolCall } from "./hooks.js";
+import { beforeToolCall, afterToolCall, clearPending } from "./hooks.js";
 import { makeHookDeps, simulateToolCall } from "./test-helpers.js";
 import { resetChain } from "./chain.js";
 
@@ -21,6 +21,7 @@ describe("hooks", () => {
 
   afterEach(() => {
     store.close();
+    clearPending();
     resetChain("test-session", "sid-1");
     resetChain("default");
   });
@@ -170,6 +171,33 @@ describe("hooks", () => {
 
       const chain = store.getChain("chain_openclaw_test-session_sid-1");
       expect(chain[0]!.credentialSubject.action.type).toBe("unknown");
+    });
+  });
+
+  describe("clearPending", () => {
+    it("empties the pending stash", async () => {
+      // Stash a call without completing it
+      beforeToolCall(
+        { toolName: "read_file", params: { path: "/a.txt" }, runId: "run-1", toolCallId: "tc-stale" },
+        { sessionKey: "test-session" },
+      );
+
+      clearPending();
+
+      // After clearing, afterToolCall should still work (falls back to re-hashing params)
+      await afterToolCall(
+        {
+          toolName: "read_file",
+          params: { path: "/a.txt" },
+          runId: "run-1",
+          toolCallId: "tc-stale",
+        },
+        { sessionKey: "test-session", sessionId: "sid-1" },
+        deps,
+      );
+
+      // Receipt was created even without stashed data
+      expect(store.stats().total).toBe(1);
     });
   });
 });

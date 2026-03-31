@@ -30,6 +30,13 @@ export function loadCustomMappings(filePath: string): void {
 }
 
 /**
+ * Reset mappings to bundled defaults. Used in tests to prevent cross-test pollution.
+ */
+export function resetMappings(): void {
+  activeMappings = defaultMappings.mappings;
+}
+
+/**
  * Classify an OpenClaw tool call into an attest-ts action type and risk level.
  */
 export function classify(toolName: string): ClassificationResult {

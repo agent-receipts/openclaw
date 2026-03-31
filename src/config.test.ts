@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
@@ -42,6 +42,20 @@ describe("resolveConfig", () => {
   it("respects enabled: false", () => {
     const cfg = resolveConfig({ enabled: false });
     expect(cfg.enabled).toBe(false);
+  });
+
+  it("throws when HOME is unset and path uses ~/", () => {
+    const originalHome = process.env.HOME;
+    try {
+      delete process.env.HOME;
+      expect(() => resolveConfig({ dbPath: "~/test/db.sqlite" })).toThrow("HOME");
+    } finally {
+      if (originalHome === undefined) {
+        delete process.env.HOME;
+      } else {
+        process.env.HOME = originalHome;
+      }
+    }
   });
 });
 
@@ -99,5 +113,32 @@ describe("loadOrCreateKeys", () => {
     const keys = loadOrCreateKeys(keyPath);
 
     expect(keys.verificationMethod).toBe("did:openclaw:agent#key-1");
+  });
+
+  it("writes key file with restrictive permissions (owner-only)", () => {
+    tempDir = join(tmpdir(), `attest-test-${randomUUID()}`);
+    const keyPath = join(tempDir, "keys.json");
+
+    loadOrCreateKeys(keyPath);
+
+    const stats = statSync(keyPath);
+    const mode = stats.mode & 0o777;
+    expect(mode).toBe(0o600);
+  });
+
+  it("tightens permissions on existing key files with insecure mode", () => {
+    tempDir = join(tmpdir(), `attest-test-${randomUUID()}`);
+    mkdirSync(tempDir, { recursive: true });
+    const keyPath = join(tempDir, "keys.json");
+
+    // Simulate an old key file with world-readable permissions
+    writeFileSync(keyPath, JSON.stringify({ publicKey: "pub", privateKey: "priv" }), { mode: 0o644 });
+    expect(statSync(keyPath).mode & 0o777).toBe(0o644);
+
+    loadOrCreateKeys(keyPath);
+
+    // Should have been tightened to 0o600
+    const mode = statSync(keyPath).mode & 0o777;
+    expect(mode).toBe(0o600);
   });
 });

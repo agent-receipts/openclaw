@@ -27,6 +27,9 @@ type PendingCall = {
 // Stash for in-flight tool calls, keyed by `${runId}:${toolCallId}`
 const pending = new Map<string, PendingCall>();
 
+const PENDING_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes
+const PENDING_MAX_SIZE = 1000;
+
 function callKey(runId?: string, toolCallId?: string): string {
   return `${runId ?? "unknown"}:${toolCallId ?? "unknown"}`;
 }
@@ -40,12 +43,37 @@ export type HookDeps = {
 };
 
 /**
+ * Evict stale entries from the pending map to prevent memory leaks
+ * when afterToolCall is never called (e.g. tool crash).
+ */
+function evictStalePending(): void {
+  if (pending.size <= PENDING_MAX_SIZE) return;
+
+  const now = Date.now();
+  for (const [key, entry] of pending) {
+    if (now - new Date(entry.startedAt).getTime() > PENDING_MAX_AGE_MS) {
+      pending.delete(key);
+    }
+  }
+}
+
+/**
+ * Clear all pending calls. Called on session_start to prevent
+ * stale entries from a previous session leaking across.
+ */
+export function clearPending(): void {
+  pending.clear();
+}
+
+/**
  * before_tool_call handler — stash context for receipt creation.
  */
 export function beforeToolCall(
   event: { toolName: string; params: Record<string, unknown>; runId?: string; toolCallId?: string },
   _ctx: { sessionKey?: string; sessionId?: string },
 ): void {
+  evictStalePending();
+
   const key = callKey(event.runId, event.toolCallId);
   pending.set(key, {
     toolName: event.toolName,

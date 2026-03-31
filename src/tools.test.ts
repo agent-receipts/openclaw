@@ -104,6 +104,26 @@ describe("attest_query_receipts", () => {
     expect(data.by_status).toBeDefined();
     expect(data.by_action).toBeDefined();
   });
+
+  it("ignores invalid risk_level values", async () => {
+    await simulateToolCall(deps, "read_file", { path: "/a.txt" }, { toolCallId: "tc-1" });
+
+    const result = await tool.execute("tc-q", { risk_level: "invalid_value" });
+    const data = JSON.parse(result.content[0].text);
+
+    // Invalid risk_level is ignored, returns all results
+    expect(data.results).toHaveLength(1);
+  });
+
+  it("ignores invalid status values", async () => {
+    await simulateToolCall(deps, "read_file", { path: "/a.txt" }, { toolCallId: "tc-1" });
+
+    const result = await tool.execute("tc-q", { status: "not_a_status" });
+    const data = JSON.parse(result.content[0].text);
+
+    // Invalid status is ignored, returns all results
+    expect(data.results).toHaveLength(1);
+  });
 });
 
 describe("attest_verify_chain", () => {

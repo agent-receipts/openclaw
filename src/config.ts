@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { generateKeyPair, type KeyPair } from "@attest-protocol/attest-ts";
 
@@ -16,7 +16,14 @@ const DEFAULTS = {
 
 function expandHome(p: string): string {
   if (p.startsWith("~/")) {
-    return resolve(process.env.HOME ?? "/tmp", p.slice(2));
+    const home = process.env.HOME;
+    if (!home) {
+      throw new Error(
+        "Cannot expand ~/ path: HOME environment variable is not set. " +
+        "Set HOME or use an absolute path in plugin config.",
+      );
+    }
+    return resolve(home, p.slice(2));
   }
   return p;
 }
@@ -42,6 +49,12 @@ export function resolveConfig(pluginConfig?: Record<string, unknown>): {
  */
 export function loadOrCreateKeys(keyPath: string): KeyPair & { verificationMethod: string } {
   if (existsSync(keyPath)) {
+    // Tighten permissions on existing key files from older versions
+    const currentMode = statSync(keyPath).mode & 0o777;
+    if (currentMode !== 0o600) {
+      chmodSync(keyPath, 0o600);
+    }
+
     const raw = readFileSync(keyPath, "utf-8");
     const stored = JSON.parse(raw) as KeyPair & { verificationMethod?: string };
     return {
@@ -59,7 +72,7 @@ export function loadOrCreateKeys(keyPath: string): KeyPair & { verificationMetho
     ...keys,
     verificationMethod: "did:openclaw:agent#key-1",
   };
-  writeFileSync(keyPath, JSON.stringify(toStore, null, 2), "utf-8");
+  writeFileSync(keyPath, JSON.stringify(toStore, null, 2), { encoding: "utf-8", mode: 0o600 });
 
   return toStore;
 }
