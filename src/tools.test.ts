@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { openStore, type ReceiptStore } from "@attest-protocol/attest-ts";
 import { createQueryReceiptsTool, createVerifyChainTool } from "./tools.js";
 import { makeHookDeps, simulateToolCall } from "./test-helpers.js";
-import { getChainId, resetChain } from "./chain.js";
+import { getChainId } from "./chain.js";
 
 describe("attest_query_receipts", () => {
   let store: ReceiptStore;
@@ -15,13 +15,12 @@ describe("attest_query_receipts", () => {
     tool = createQueryReceiptsTool({
       store,
       publicKey: deps.publicKey,
-      getChainId,
+      getChainId: (sk, sid) => getChainId(deps.chains, sk, sid),
     });
   });
 
   afterEach(() => {
     store.close();
-    resetChain("test-session", "sid-1");
   });
 
   it("returns empty results on fresh store", async () => {
@@ -137,13 +136,12 @@ describe("attest_verify_chain", () => {
     tool = createVerifyChainTool({
       store,
       publicKey: deps.publicKey,
-      getChainId,
+      getChainId: (sk, sid) => getChainId(deps.chains, sk, sid),
     });
   });
 
   afterEach(() => {
     store.close();
-    resetChain("test-session", "sid-1");
   });
 
   it("returns valid for a correct chain", async () => {
@@ -151,7 +149,7 @@ describe("attest_verify_chain", () => {
       await simulateToolCall(deps, "read_file", { path: `/f${i}` }, { toolCallId: `tc-${i}` });
     }
 
-    const chainId = getChainId("test-session", "sid-1");
+    const chainId = getChainId(deps.chains, "test-session", "sid-1");
     const result = await tool.execute("tc-v", { chain_id: chainId });
 
     expect(result.content[0].text).toContain("is valid");

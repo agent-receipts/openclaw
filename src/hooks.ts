@@ -3,6 +3,9 @@
  *
  * before_tool_call: stash context (params, timestamp) for the pending call
  * after_tool_call:  create, sign, chain, and store the receipt
+ *
+ * All mutable state (pending, chains, mappings) is passed via HookDeps —
+ * no module-level singletons — so multiple plugin instances are safe.
  */
 
 import {
@@ -13,19 +16,19 @@ import {
   sha256,
   type ReceiptStore,
 } from "@attest-protocol/attest-ts";
+import type { TaxonomyMapping } from "@attest-protocol/attest-ts/taxonomy";
 
 import { classify } from "./classify.js";
-import { getChainState, advanceChain } from "./chain.js";
+import { type ChainsMap, getChainState, advanceChain } from "./chain.js";
 
-type PendingCall = {
+export type PendingCall = {
   toolName: string;
   params: Record<string, unknown>;
   startedAt: string;
   paramsHash: string;
 };
 
-// Stash for in-flight tool calls, keyed by `${runId}:${toolCallId}`
-const pending = new Map<string, PendingCall>();
+export type PendingMap = Map<string, PendingCall>;
 
 const PENDING_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes
 const PENDING_MAX_SIZE = 1000;
@@ -40,14 +43,17 @@ export type HookDeps = {
   verificationMethod: string;
   agentId: string;
   logger: { info: (msg: string) => void; warn: (msg: string) => void };
+  pending: PendingMap;
+  chains: ChainsMap;
+  mappings: TaxonomyMapping[];
 };
 
 /**
  * Evict stale entries from the pending map to prevent memory leaks
  * when afterToolCall is never called (e.g. tool crash).
  */
-function evictStalePending(): void {
-  if (pending.size <= PENDING_MAX_SIZE) return;
+function evictStalePending(pending: PendingMap): void {
+  if (pending.size === 0) return;
 
   const now = Date.now();
   for (const [key, entry] of pending) {
@@ -55,14 +61,17 @@ function evictStalePending(): void {
       pending.delete(key);
     }
   }
-}
 
-/**
- * Clear all pending calls. Called on session_start to prevent
- * stale entries from a previous session leaking across.
- */
-export function clearPending(): void {
-  pending.clear();
+  // If still over the size limit, evict oldest entries
+  if (pending.size > PENDING_MAX_SIZE) {
+    const sorted = [...pending.entries()].sort(
+      (a, b) => new Date(a[1].startedAt).getTime() - new Date(b[1].startedAt).getTime(),
+    );
+    const excess = pending.size - PENDING_MAX_SIZE;
+    for (let i = 0; i < excess; i++) {
+      pending.delete(sorted[i][0]);
+    }
+  }
 }
 
 /**
@@ -71,11 +80,12 @@ export function clearPending(): void {
 export function beforeToolCall(
   event: { toolName: string; params: Record<string, unknown>; runId?: string; toolCallId?: string },
   _ctx: { sessionKey?: string; sessionId?: string },
+  deps: HookDeps,
 ): void {
-  evictStalePending();
+  evictStalePending(deps.pending);
 
   const key = callKey(event.runId, event.toolCallId);
-  pending.set(key, {
+  deps.pending.set(key, {
     toolName: event.toolName,
     params: event.params,
     startedAt: new Date().toISOString(),
@@ -100,17 +110,17 @@ export async function afterToolCall(
   deps: HookDeps,
 ): Promise<void> {
   const key = callKey(event.runId, event.toolCallId);
-  const stashed = pending.get(key);
-  pending.delete(key);
+  const stashed = deps.pending.get(key);
+  deps.pending.delete(key);
 
   const sessionKey = ctx.sessionKey ?? "default";
   const sessionId = ctx.sessionId;
 
   // Classify the tool call
-  const classification = classify(event.toolName);
+  const classification = classify(event.toolName, deps.mappings);
 
   // Get chain state and advance sequence
-  const chain = getChainState(sessionKey, sessionId);
+  const chain = getChainState(deps.chains, sessionKey, sessionId);
   const nextSequence = chain.sequence + 1;
 
   // Determine outcome
@@ -144,7 +154,7 @@ export async function afterToolCall(
 
   // Store and advance chain
   deps.store.insert(signed, hash);
-  advanceChain(sessionKey, sessionId, hash);
+  advanceChain(deps.chains, sessionKey, sessionId, hash);
 
   deps.logger.info(
     `attest: receipt ${signed.id} (${classification.action_type}, ${classification.risk_level}) → chain ${chain.chainId} seq ${nextSequence}`,

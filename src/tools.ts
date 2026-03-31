@@ -5,7 +5,6 @@
 import { Type } from "@sinclair/typebox";
 import type { ReceiptStore, RiskLevel, OutcomeStatus } from "@attest-protocol/attest-ts";
 import { verifyStoredChain } from "@attest-protocol/attest-ts";
-import type { getChainId } from "./chain.js";
 
 const VALID_RISK_LEVELS = new Set<string>(["low", "medium", "high", "critical"]);
 const VALID_STATUSES = new Set<string>(["success", "failure", "pending"]);
@@ -13,7 +12,7 @@ const VALID_STATUSES = new Set<string>(["success", "failure", "pending"]);
 type ToolDeps = {
   store: ReceiptStore;
   publicKey: string;
-  getChainId: typeof getChainId;
+  getChainId: (sessionKey: string, sessionId?: string) => string;
 };
 
 /**

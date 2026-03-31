@@ -12,9 +12,9 @@ import { definePluginEntry } from "./openclaw-types.js";
 import { openStore } from "@attest-protocol/attest-ts";
 
 import { resolveConfig, loadOrCreateKeys } from "./config.js";
-import { loadCustomMappings } from "./classify.js";
-import { beforeToolCall, afterToolCall, clearPending, type HookDeps } from "./hooks.js";
-import { resetChain, getChainId } from "./chain.js";
+import { loadCustomMappings, DEFAULT_MAPPINGS } from "./classify.js";
+import { beforeToolCall, afterToolCall, type HookDeps, type PendingMap } from "./hooks.js";
+import { resetChain, getChainId, type ChainsMap, type ChainState } from "./chain.js";
 import { createQueryReceiptsTool, createVerifyChainTool } from "./tools.js";
 
 export default definePluginEntry({
@@ -30,9 +30,14 @@ export default definePluginEntry({
       return;
     }
 
-    // Load custom taxonomy if provided
+    // All mutable state lives here, scoped to this plugin instance
+    const chains: ChainsMap = new Map<string, ChainState>();
+    const pending: PendingMap = new Map();
+    const mappings = cfg.taxonomyPath
+      ? loadCustomMappings(cfg.taxonomyPath)
+      : DEFAULT_MAPPINGS;
+
     if (cfg.taxonomyPath) {
-      loadCustomMappings(cfg.taxonomyPath);
       api.logger.info(`attest: loaded custom taxonomy from ${cfg.taxonomyPath}`);
     }
 
@@ -53,6 +58,9 @@ export default definePluginEntry({
       verificationMethod: keys.verificationMethod,
       agentId,
       logger: api.logger,
+      pending,
+      chains,
+      mappings,
     };
 
     // --- Hooks ---
@@ -61,8 +69,8 @@ export default definePluginEntry({
     api.on("session_start", (_event, ctx) => {
       const sessionKey = ctx.sessionKey ?? "default";
       const sessionId = ctx.sessionId;
-      resetChain(sessionKey, sessionId);
-      clearPending();
+      resetChain(chains, sessionKey, sessionId);
+      pending.clear();
       api.logger.info(`attest: new chain for session ${sessionKey}`);
     });
 
@@ -70,7 +78,7 @@ export default definePluginEntry({
     api.on(
       "before_tool_call",
       (event, ctx) => {
-        beforeToolCall(event, ctx);
+        beforeToolCall(event, ctx, hookDeps);
       },
       { priority: 100 }, // Run early to capture timing
     );
@@ -89,7 +97,8 @@ export default definePluginEntry({
     const toolDeps = {
       store,
       publicKey: keys.publicKey,
-      getChainId,
+      getChainId: (sessionKey: string, sessionId?: string) =>
+        getChainId(chains, sessionKey, sessionId),
     };
 
     api.registerTool(createQueryReceiptsTool(toolDeps), {
