@@ -1,0 +1,24 @@
+{
+  "mappings": [
+    { "tool_name": "read_file", "action_type": "filesystem.file.read" },
+    { "tool_name": "write_file", "action_type": "filesystem.file.create" },
+    { "tool_name": "edit_file", "action_type": "filesystem.file.modify" },
+    { "tool_name": "delete_file", "action_type": "filesystem.file.delete" },
+    { "tool_name": "move_file", "action_type": "filesystem.file.move" },
+    { "tool_name": "list_directory", "action_type": "filesystem.file.read" },
+    { "tool_name": "create_directory", "action_type": "filesystem.directory.create" },
+    { "tool_name": "run_command", "action_type": "system.command.execute" },
+    { "tool_name": "execute_command", "action_type": "system.command.execute" },
+    { "tool_name": "shell", "action_type": "system.command.execute" },
+    { "tool_name": "browser_navigate", "action_type": "system.browser.navigate" },
+    { "tool_name": "browser_click", "action_type": "system.browser.form_submit" },
+    { "tool_name": "browser_type", "action_type": "system.browser.form_submit" },
+    { "tool_name": "browser_screenshot", "action_type": "system.browser.navigate" },
+    { "tool_name": "send_message", "action_type": "system.application.control" },
+    { "tool_name": "memory_store", "action_type": "filesystem.file.create" },
+    { "tool_name": "memory_recall", "action_type": "filesystem.file.read" },
+    { "tool_name": "web_search", "action_type": "system.browser.navigate" },
+    { "tool_name": "launch_app", "action_type": "system.application.launch" },
+    { "tool_name": "settings_modify", "action_type": "system.settings.modify" }
+  ]
+}

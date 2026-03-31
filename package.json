@@ -1,0 +1,22 @@
+{
+  "name": "openclaw-attest",
+  "version": "0.1.0",
+  "description": "Cryptographically signed audit trail for OpenClaw agent actions via Attest Protocol",
+  "type": "module",
+  "dependencies": {
+    "@attest-protocol/attest-ts": "^0.1.0",
+    "@sinclair/typebox": "0.34.49"
+  },
+  "devDependencies": {
+    "openclaw": "*",
+    "typescript": "^5.7.0"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2025.0.0"
+  },
+  "openclaw": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  }
+}

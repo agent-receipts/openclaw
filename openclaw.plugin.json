@@ -1,0 +1,51 @@
+{
+  "id": "openclaw-attest",
+  "name": "Attest Protocol",
+  "description": "Cryptographically signed audit trail for agent actions",
+  "contracts": {
+    "tools": ["attest_query_receipts", "attest_verify_chain"]
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "dbPath": {
+        "type": "string",
+        "description": "Path to SQLite receipt database"
+      },
+      "keyPath": {
+        "type": "string",
+        "description": "Path to Ed25519 key pair JSON file"
+      },
+      "taxonomyPath": {
+        "type": "string",
+        "description": "Path to custom taxonomy mapping JSON"
+      },
+      "enabled": {
+        "type": "boolean",
+        "default": true
+      }
+    }
+  },
+  "uiHints": {
+    "dbPath": {
+      "label": "Database Path",
+      "placeholder": "~/.openclaw/attest/receipts.db",
+      "advanced": true
+    },
+    "keyPath": {
+      "label": "Key Path",
+      "placeholder": "~/.openclaw/attest/keys.json",
+      "advanced": true
+    },
+    "taxonomyPath": {
+      "label": "Custom Taxonomy",
+      "placeholder": "path/to/taxonomy.json",
+      "advanced": true
+    },
+    "enabled": {
+      "label": "Enable Attestations",
+      "help": "Generate signed receipts for every tool call"
+    }
+  }
+}
