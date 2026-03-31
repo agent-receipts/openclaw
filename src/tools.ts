@@ -113,10 +113,11 @@ export function createVerifyChainTool(deps: ToolDeps) {
         length: verification.length,
         broken_at: verification.brokenAt,
         receipts: verification.receipts.map((r) => ({
-          sequence: r.sequence,
-          signature_valid: r.signatureValid,
-          hash_valid: r.hashValid,
+          index: r.index,
           receipt_id: r.receiptId,
+          signature_valid: r.signatureValid,
+          hash_link_valid: r.hashLinkValid,
+          sequence_valid: r.sequenceValid,
         })),
       };
 

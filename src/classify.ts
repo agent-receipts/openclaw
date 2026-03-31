@@ -25,7 +25,7 @@ export function loadCustomMappings(filePath: string): void {
   // Merge: custom overrides defaults
   activeMappings = [
     ...parsed.mappings,
-    ...defaultMappings.mappings.filter((m) => !customByName.has(m.tool_name)),
+    ...defaultMappings.mappings.filter((m: TaxonomyMapping) => !customByName.has(m.tool_name)),
   ];
 }
 
