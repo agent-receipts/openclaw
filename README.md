@@ -20,6 +20,22 @@ Built on [`@attest-protocol/attest-ts`](https://github.com/attest-protocol/attes
 
 ---
 
+## Why receipts?
+
+AI agents that read files, run commands, and browse the web are powerful — but that power needs accountability. When an agent operates autonomously, you need to know exactly what it did, prove that the record hasn't been tampered with, and keep sensitive details private.
+
+**Use cases:**
+
+- **Post-incident review** — your agent ran overnight and something broke. The receipt chain shows exactly which commands it ran, in what order, and whether each succeeded or failed — with cryptographic proof that the log hasn't been altered after the fact.
+- **Compliance and audit** — regulated environments require evidence of what systems did and why. Receipts are W3C Verifiable Credentials with Ed25519 signatures, giving auditors a tamper-evident trail they can independently verify.
+- **Safer autonomous agents** — the agent can query its own audit trail mid-session. Before taking a high-risk action, it can check what it has already done and whether previous steps succeeded, enabling self-correcting workflows.
+- **Multi-agent trust** — when agents collaborate, receipts serve as proof of prior actions. Agent B can verify that Agent A actually completed step 1 before proceeding to step 2, without trusting a shared log.
+- **Cost and usage tracking** — every tool call is classified by type and risk level, giving you a structured breakdown of what your agent spent its time on across sessions.
+
+### Beyond local storage
+
+Today, receipts are stored locally in SQLite — fully under your control. The [Attest Protocol](https://github.com/attest-protocol/spec) is designed for receipts to travel further when you choose: publishing to a shared ledger, forwarding to a compliance system, or exchanging with other agents as proof of prior actions. The receipts are portable W3C Verifiable Credentials, but where they go is always your decision.
+
 ## How it works
 
 Every time the OpenClaw agent executes a tool, this plugin:
