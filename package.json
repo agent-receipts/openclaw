@@ -13,6 +13,7 @@
     "@sinclair/typebox": "0.34.49"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.2",
     "openclaw": "*",
     "typescript": "^5.7.0",
     "vitest": "^3.1.0"

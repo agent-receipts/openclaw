@@ -20,8 +20,15 @@ jobs:
         with:
           node-version: "22"
 
-      - run: npm install
+      - run: corepack enable && corepack prepare pnpm@10.33.0 --activate
 
-      - run: npm run typecheck
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
 
-      - run: npm test
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm run typecheck
+
+      - run: pnpm test
