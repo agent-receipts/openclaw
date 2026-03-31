@@ -7,10 +7,13 @@ import {
   openStore,
   type ReceiptStore,
 } from "@attest-protocol/attest-ts";
-import { beforeToolCall, afterToolCall, type HookDeps } from "./hooks.js";
+import { beforeToolCall, afterToolCall, type HookDeps, type PendingMap } from "./hooks.js";
+import { type ChainsMap, type ChainState } from "./chain.js";
+import { DEFAULT_MAPPINGS } from "./classify.js";
 
 /**
- * Create HookDeps with generated keys and an in-memory store.
+ * Create HookDeps with generated keys, in-memory store, and isolated state.
+ * Each call creates fresh chains/pending/mappings — no shared module state.
  */
 export function makeHookDeps(store?: ReceiptStore): HookDeps & {
   publicKey: string;
@@ -18,6 +21,8 @@ export function makeHookDeps(store?: ReceiptStore): HookDeps & {
 } {
   const keys = generateKeyPair();
   const s = store ?? openStore(":memory:");
+  const chains: ChainsMap = new Map<string, ChainState>();
+  const pending: PendingMap = new Map();
   return {
     store: s,
     privateKey: keys.privateKey,
@@ -28,6 +33,9 @@ export function makeHookDeps(store?: ReceiptStore): HookDeps & {
       info: () => {},
       warn: () => {},
     },
+    chains,
+    pending,
+    mappings: DEFAULT_MAPPINGS,
   };
 }
 
@@ -56,6 +64,7 @@ export async function simulateToolCall(
   beforeToolCall(
     { toolName, params, runId, toolCallId },
     ctx,
+    deps,
   );
 
   await afterToolCall(

@@ -8,13 +8,18 @@ import {
 // Default mappings bundled with the plugin
 import defaultMappings from "../taxonomy.json" with { type: "json" };
 
-let activeMappings: TaxonomyMapping[] = defaultMappings.mappings;
+export { type TaxonomyMapping } from "@attest-protocol/attest-ts/taxonomy";
+
+/** The bundled default mappings, exported for use when no custom taxonomy is configured. */
+export const DEFAULT_MAPPINGS: TaxonomyMapping[] = defaultMappings.mappings;
 
 /**
  * Load custom taxonomy mappings from a JSON file, merging with defaults.
  * Custom mappings take precedence (matched by tool_name).
+ *
+ * Pure function — returns the merged mappings without side effects.
  */
-export function loadCustomMappings(filePath: string): void {
+export function loadCustomMappings(filePath: string): TaxonomyMapping[] {
   const raw = readFileSync(filePath, "utf-8");
   const parsed = JSON.parse(raw) as { mappings: TaxonomyMapping[] };
 
@@ -23,22 +28,15 @@ export function loadCustomMappings(filePath: string): void {
   );
 
   // Merge: custom overrides defaults
-  activeMappings = [
+  return [
     ...parsed.mappings,
     ...defaultMappings.mappings.filter((m: TaxonomyMapping) => !customByName.has(m.tool_name)),
   ];
 }
 
 /**
- * Reset mappings to bundled defaults. Used in tests to prevent cross-test pollution.
- */
-export function resetMappings(): void {
-  activeMappings = defaultMappings.mappings;
-}
-
-/**
  * Classify an OpenClaw tool call into an attest-ts action type and risk level.
  */
-export function classify(toolName: string): ClassificationResult {
-  return classifyToolCall(toolName, activeMappings);
+export function classify(toolName: string, mappings: TaxonomyMapping[]): ClassificationResult {
+  return classifyToolCall(toolName, mappings);
 }

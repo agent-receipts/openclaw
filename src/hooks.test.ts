@@ -6,9 +6,8 @@ import {
   sha256,
   type ReceiptStore,
 } from "@attest-protocol/attest-ts";
-import { beforeToolCall, afterToolCall, clearPending } from "./hooks.js";
+import { beforeToolCall, afterToolCall } from "./hooks.js";
 import { makeHookDeps, simulateToolCall } from "./test-helpers.js";
-import { resetChain } from "./chain.js";
 
 describe("hooks", () => {
   let store: ReceiptStore;
@@ -21,9 +20,6 @@ describe("hooks", () => {
 
   afterEach(() => {
     store.close();
-    clearPending();
-    resetChain("test-session", "sid-1");
-    resetChain("default");
   });
 
   describe("beforeToolCall + afterToolCall lifecycle", () => {
@@ -174,15 +170,16 @@ describe("hooks", () => {
     });
   });
 
-  describe("clearPending", () => {
-    it("empties the pending stash", async () => {
+  describe("pending stash", () => {
+    it("clearing pending stash does not break receipt creation", async () => {
       // Stash a call without completing it
       beforeToolCall(
         { toolName: "read_file", params: { path: "/a.txt" }, runId: "run-1", toolCallId: "tc-stale" },
         { sessionKey: "test-session" },
+        deps,
       );
 
-      clearPending();
+      deps.pending.clear();
 
       // After clearing, afterToolCall should still work (falls back to re-hashing params)
       await afterToolCall(

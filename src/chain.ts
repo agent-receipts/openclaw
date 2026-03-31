@@ -3,6 +3,9 @@
  *
  * Each OpenClaw session gets its own hash-linked receipt chain.
  * Chain state is held in memory and reset on session_start.
+ *
+ * All functions take a `chains` Map parameter — no module-level
+ * mutable state — so multiple plugin instances are safe.
  */
 
 export type ChainState = {
@@ -11,7 +14,7 @@ export type ChainState = {
   previousReceiptHash: string | null;
 };
 
-const chains = new Map<string, ChainState>();
+export type ChainsMap = Map<string, ChainState>;
 
 /** Build a chain ID from session identifiers. */
 function buildChainId(sessionKey: string, sessionId?: string): string {
@@ -23,7 +26,7 @@ function buildChainId(sessionKey: string, sessionId?: string): string {
  * Get or initialize the chain state for a session.
  * Returns the current state (sequence starts at 1 for new chains).
  */
-export function getChainState(sessionKey: string, sessionId?: string): ChainState {
+export function getChainState(chains: ChainsMap, sessionKey: string, sessionId?: string): ChainState {
   const key = `${sessionKey}:${sessionId ?? ""}`;
   let state = chains.get(key);
   if (!state) {
@@ -42,11 +45,12 @@ export function getChainState(sessionKey: string, sessionId?: string): ChainStat
  * Call this after a receipt has been created and stored.
  */
 export function advanceChain(
+  chains: ChainsMap,
   sessionKey: string,
   sessionId: string | undefined,
   receiptHash: string,
 ): void {
-  const state = getChainState(sessionKey, sessionId);
+  const state = getChainState(chains, sessionKey, sessionId);
   state.sequence += 1;
   state.previousReceiptHash = receiptHash;
 }
@@ -54,7 +58,7 @@ export function advanceChain(
 /**
  * Reset chain state for a session (called on session_start).
  */
-export function resetChain(sessionKey: string, sessionId?: string): void {
+export function resetChain(chains: ChainsMap, sessionKey: string, sessionId?: string): void {
   const key = `${sessionKey}:${sessionId ?? ""}`;
   chains.delete(key);
 }
@@ -62,6 +66,6 @@ export function resetChain(sessionKey: string, sessionId?: string): void {
 /**
  * Get the chain ID for a session without mutating state.
  */
-export function getChainId(sessionKey: string, sessionId?: string): string {
-  return getChainState(sessionKey, sessionId).chainId;
+export function getChainId(chains: ChainsMap, sessionKey: string, sessionId?: string): string {
+  return getChainState(chains, sessionKey, sessionId).chainId;
 }

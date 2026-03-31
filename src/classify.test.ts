@@ -3,46 +3,46 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
-import { classify, loadCustomMappings, resetMappings } from "./classify.js";
+import { classify, loadCustomMappings, DEFAULT_MAPPINGS } from "./classify.js";
 
 describe("classify", () => {
   it("maps read_file to filesystem.file.read with low risk", () => {
-    const result = classify("read_file");
+    const result = classify("read_file", DEFAULT_MAPPINGS);
 
     expect(result.action_type).toBe("filesystem.file.read");
     expect(result.risk_level).toBe("low");
   });
 
   it("maps edit_file to filesystem.file.modify with medium risk", () => {
-    const result = classify("edit_file");
+    const result = classify("edit_file", DEFAULT_MAPPINGS);
 
     expect(result.action_type).toBe("filesystem.file.modify");
     expect(result.risk_level).toBe("medium");
   });
 
   it("maps delete_file to filesystem.file.delete with high risk", () => {
-    const result = classify("delete_file");
+    const result = classify("delete_file", DEFAULT_MAPPINGS);
 
     expect(result.action_type).toBe("filesystem.file.delete");
     expect(result.risk_level).toBe("high");
   });
 
   it("maps run_command to system.command.execute with high risk", () => {
-    const result = classify("run_command");
+    const result = classify("run_command", DEFAULT_MAPPINGS);
 
     expect(result.action_type).toBe("system.command.execute");
     expect(result.risk_level).toBe("high");
   });
 
   it("maps browser_navigate to system.browser.navigate with low risk", () => {
-    const result = classify("browser_navigate");
+    const result = classify("browser_navigate", DEFAULT_MAPPINGS);
 
     expect(result.action_type).toBe("system.browser.navigate");
     expect(result.risk_level).toBe("low");
   });
 
   it("falls back to unknown for unmapped tools", () => {
-    const result = classify("some_custom_tool_xyz");
+    const result = classify("some_custom_tool_xyz", DEFAULT_MAPPINGS);
 
     expect(result.action_type).toBe("unknown");
     expect(result.risk_level).toBe("medium");
@@ -53,7 +53,6 @@ describe("loadCustomMappings", () => {
   let tempDir: string;
 
   afterEach(() => {
-    resetMappings();
     if (tempDir) {
       rmSync(tempDir, { recursive: true, force: true });
     }
@@ -71,9 +70,9 @@ describe("loadCustomMappings", () => {
       ],
     }));
 
-    loadCustomMappings(taxPath);
+    const merged = loadCustomMappings(taxPath);
 
-    const result = classify("read_file");
+    const result = classify("read_file", merged);
     expect(result.action_type).toBe("filesystem.file.delete");
     expect(result.risk_level).toBe("high"); // delete is high risk
   });
@@ -90,14 +89,14 @@ describe("loadCustomMappings", () => {
       ],
     }));
 
-    loadCustomMappings(taxPath);
+    const merged = loadCustomMappings(taxPath);
 
     // Custom tool maps to the specified canonical action type
-    const custom = classify("my_new_tool");
+    const custom = classify("my_new_tool", merged);
     expect(custom.action_type).toBe("system.command.execute");
 
     // Default still works
-    const defaultResult = classify("delete_file");
+    const defaultResult = classify("delete_file", merged);
     expect(defaultResult.action_type).toBe("filesystem.file.delete");
   });
 
