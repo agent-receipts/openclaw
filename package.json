@@ -3,7 +3,33 @@
   "version": "0.1.0",
   "description": "Cryptographically signed audit trail for OpenClaw agent actions via Attest Protocol",
   "type": "module",
+  "license": "MIT",
+  "author": "Otto Jongerius",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/attest-protocol/openclaw-attest.git"
+  },
+  "keywords": [
+    "openclaw",
+    "attest-protocol",
+    "audit-trail",
+    "receipts",
+    "verifiable-credentials",
+    "ed25519"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "taxonomy.json",
+    "openclaw.plugin.json"
+  ],
   "scripts": {
+    "build": "tsc",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit"
