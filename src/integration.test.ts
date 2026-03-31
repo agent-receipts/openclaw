@@ -78,8 +78,14 @@ async function fireHook(
 
 describe("integration: full plugin lifecycle", () => {
   let tempDir: string;
+  let teardown: (() => Promise<void>) | undefined;
 
-  afterEach(() => {
+  afterEach(async () => {
+    // Close the store before removing temp files to avoid leaked file handles
+    if (teardown) {
+      await teardown();
+      teardown = undefined;
+    }
     if (tempDir) {
       rmSync(tempDir, { recursive: true, force: true });
     }
@@ -97,6 +103,14 @@ describe("integration: full plugin lifecycle", () => {
 
     const mock = createMockApi(config);
     plugin.register(mock.api);
+
+    // Wire up teardown so afterEach always closes the store
+    teardown = async () => {
+      for (const svc of mock.services) {
+        await svc.stop?.();
+      }
+    };
+
     return mock;
   }
 
@@ -183,8 +197,7 @@ describe("integration: full plugin lifecycle", () => {
       expect(r.sequence_valid).toBe(true);
     }
 
-    // 5. Shutdown service
-    await services[0].stop!();
+    // 5. Shutdown is handled by afterEach teardown
   });
 
   it("session reset clears chain state", async () => {
