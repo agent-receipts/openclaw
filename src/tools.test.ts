@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { openStore, type ReceiptStore } from "@attest-protocol/attest-ts";
 import { createQueryReceiptsTool, createVerifyChainTool } from "./tools.js";
 import { makeHookDeps, simulateToolCall } from "./test-helpers.js";
-import { getChainId, type ChainsMap, type ChainState } from "./chain.js";
+import { getChainId } from "./chain.js";
 
 describe("attest_query_receipts", () => {
   let store: ReceiptStore;

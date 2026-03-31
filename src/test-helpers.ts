@@ -13,7 +13,8 @@ import { DEFAULT_MAPPINGS } from "./classify.js";
 
 /**
  * Create HookDeps with generated keys, in-memory store, and isolated state.
- * Each call creates fresh chains/pending/mappings — no shared module state.
+ * Each call creates fresh chains/pending — no shared module state.
+ * Mappings use the shared immutable DEFAULT_MAPPINGS.
  */
 export function makeHookDeps(store?: ReceiptStore): HookDeps & {
   publicKey: string;

@@ -24,7 +24,7 @@ function buildChainId(sessionKey: string, sessionId?: string): string {
 
 /**
  * Get or initialize the chain state for a session.
- * Returns the current state (sequence starts at 1 for new chains).
+ * Returns the current state (sequence starts at 0 for new chains).
  */
 export function getChainState(chains: ChainsMap, sessionKey: string, sessionId?: string): ChainState {
   const key = `${sessionKey}:${sessionId ?? ""}`;
@@ -66,6 +66,6 @@ export function resetChain(chains: ChainsMap, sessionKey: string, sessionId?: st
 /**
  * Get the chain ID for a session without mutating state.
  */
-export function getChainId(chains: ChainsMap, sessionKey: string, sessionId?: string): string {
-  return getChainState(chains, sessionKey, sessionId).chainId;
+export function getChainId(_chains: ChainsMap, sessionKey: string, sessionId?: string): string {
+  return buildChainId(sessionKey, sessionId);
 }

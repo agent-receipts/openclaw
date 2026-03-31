@@ -13,7 +13,7 @@ import { openStore } from "@attest-protocol/attest-ts";
 
 import { resolveConfig, loadOrCreateKeys } from "./config.js";
 import { loadCustomMappings, DEFAULT_MAPPINGS } from "./classify.js";
-import { beforeToolCall, afterToolCall, type HookDeps } from "./hooks.js";
+import { beforeToolCall, afterToolCall, type HookDeps, type PendingMap } from "./hooks.js";
 import { resetChain, getChainId, type ChainsMap, type ChainState } from "./chain.js";
 import { createQueryReceiptsTool, createVerifyChainTool } from "./tools.js";
 
@@ -32,7 +32,7 @@ export default definePluginEntry({
 
     // All mutable state lives here, scoped to this plugin instance
     const chains: ChainsMap = new Map<string, ChainState>();
-    const pending = new Map();
+    const pending: PendingMap = new Map();
     const mappings = cfg.taxonomyPath
       ? loadCustomMappings(cfg.taxonomyPath)
       : DEFAULT_MAPPINGS;

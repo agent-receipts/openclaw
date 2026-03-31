@@ -53,12 +53,23 @@ export type HookDeps = {
  * when afterToolCall is never called (e.g. tool crash).
  */
 function evictStalePending(pending: PendingMap): void {
-  if (pending.size <= PENDING_MAX_SIZE) return;
+  if (pending.size === 0) return;
 
   const now = Date.now();
   for (const [key, entry] of pending) {
     if (now - new Date(entry.startedAt).getTime() > PENDING_MAX_AGE_MS) {
       pending.delete(key);
+    }
+  }
+
+  // If still over the size limit, evict oldest entries
+  if (pending.size > PENDING_MAX_SIZE) {
+    const sorted = [...pending.entries()].sort(
+      (a, b) => new Date(a[1].startedAt).getTime() - new Date(b[1].startedAt).getTime(),
+    );
+    const excess = pending.size - PENDING_MAX_SIZE;
+    for (let i = 0; i < excess; i++) {
+      pending.delete(sorted[i][0]);
     }
   }
 }
