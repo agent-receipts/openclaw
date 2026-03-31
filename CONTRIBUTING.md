@@ -23,6 +23,7 @@ pnpm install
 
 | Command | Description |
 |---------|-------------|
+| `pnpm run build` | Compile TypeScript to dist/ |
 | `pnpm test` | Run test suite |
 | `pnpm test:coverage` | Run tests with coverage |
 | `pnpm run typecheck` | TypeScript type checking |
