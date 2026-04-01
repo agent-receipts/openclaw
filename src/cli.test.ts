@@ -370,4 +370,16 @@ describe("run", () => {
   it("throws on invalid risk level", () => {
     expect(() => run(["receipts", "--risk", "extreme"])).toThrow("Invalid --risk value");
   });
+
+  it("throws when export has both --id and --chain", () => {
+    expect(() => run(["export", "--id", "r1", "--chain", "c1"])).toThrow(
+      "Cannot use both --id and --chain",
+    );
+  });
+
+  it("throws when export has neither --id nor --chain", () => {
+    expect(() => run(["export"])).toThrow(
+      "Export requires --chain <id> or --id <receipt-id>",
+    );
+  });
 });

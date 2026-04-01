@@ -369,31 +369,39 @@ export function wrapInPresentation(receipts: ActionReceipt[]): object {
 }
 
 function runExport(opts: ExportOptions): void {
+  if (opts.id && opts.chain) {
+    throw new Error("Cannot use both --id and --chain. Use one or the other.");
+  }
+  if (!opts.id && !opts.chain) {
+    throw new Error("Export requires --chain <id> or --id <receipt-id>. Use --help for usage.");
+  }
+
   const dbPath = expandHome(opts.db);
   let store: ReceiptStore | undefined;
 
   try {
     store = openStore(dbPath);
-    let receipts: ActionReceipt[];
+    let output: object;
 
     if (opts.id) {
       const receipt = store.getById(opts.id);
       if (!receipt) {
         throw new Error(`Receipt not found: "${opts.id}"`);
       }
-      receipts = [receipt];
-    } else if (opts.chain) {
-      receipts = store.getChain(opts.chain);
+      // --id: single receipt object (or wrapped in VP)
+      output = opts.format === "presentation"
+        ? wrapInPresentation([receipt])
+        : receipt;
+    } else {
+      const receipts = store.getChain(opts.chain!);
       if (receipts.length === 0) {
         throw new Error(`No receipts found for chain: "${opts.chain}"`);
       }
-    } else {
-      throw new Error("Export requires --chain <id> or --id <receipt-id>. Use --help for usage.");
+      // --chain: always an array (or wrapped in VP)
+      output = opts.format === "presentation"
+        ? wrapInPresentation(receipts)
+        : receipts;
     }
-
-    const output = opts.format === "presentation"
-      ? wrapInPresentation(receipts)
-      : receipts.length === 1 ? receipts[0] : receipts;
 
     process.stdout.write(JSON.stringify(output, null, 2) + "\n");
   } finally {
