@@ -4,6 +4,7 @@
 
 ### Attest Protocol plugin for OpenClaw
 
+[![npm](https://img.shields.io/npm/v/@attest-protocol/openclaw-attest)](https://www.npmjs.com/package/@attest-protocol/openclaw-attest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-ESM-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![CI](https://github.com/attest-protocol/openclaw-attest/actions/workflows/ci.yml/badge.svg)](https://github.com/attest-protocol/openclaw-attest/actions/workflows/ci.yml)
@@ -59,14 +60,9 @@ OpenClaw Gateway
 
 ## Install
 
-Copy or symlink into your OpenClaw workspace plugins:
-
-```bash
-# Copy
-cp -r /path/to/openclaw-attest ~/.openclaw/plugins/openclaw-attest
-
-# Or symlink for development
-ln -s /path/to/openclaw-attest ~/.openclaw/plugins/openclaw-attest
+```sh
+npm install @attest-protocol/openclaw-attest
+# or: pnpm add @attest-protocol/openclaw-attest
 ```
 
 Then enable the plugin in your OpenClaw config.
