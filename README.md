@@ -102,6 +102,29 @@ openclaw plugins install @attest-protocol/openclaw-attest
 
 Then enable the plugin in your OpenClaw config. See [`docs/INSTALL.md`](docs/INSTALL.md) for tool visibility setup and configuration options.
 
+## CLI — Receipt Explorer
+
+Query and verify receipts outside of agent sessions, useful for auditing and debugging.
+
+```bash
+# Query all receipts
+npx @attest-protocol/openclaw-attest receipts
+
+# Filter by risk level
+npx @attest-protocol/openclaw-attest receipts --risk high
+
+# Filter by action type and output as JSON
+npx @attest-protocol/openclaw-attest receipts --action system.command.execute --json
+
+# Verify all chains
+npx @attest-protocol/openclaw-attest verify
+
+# Verify a specific chain
+npx @attest-protocol/openclaw-attest verify --chain chain_openclaw_main_sid-42
+```
+
+Run `npx @attest-protocol/openclaw-attest --help` for all options including `--status`, `--limit`, and `--db`.
+
 ## Agent tools
 
 ### `attest_query_receipts`
@@ -179,6 +202,7 @@ Ed25519 signing keys are generated automatically on first run and persisted to `
 ```
 src/
   index.ts          # Plugin entry — wires hooks, tools, service
+  cli.ts            # Receipt Explorer CLI (npx @attest-protocol/openclaw-attest)
   hooks.ts          # before_tool_call / after_tool_call → receipt creation
   classify.ts       # Tool name → action type + risk level classification
   chain.ts          # Per-session hash-linked chain state
