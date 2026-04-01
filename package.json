@@ -7,7 +7,7 @@
   "author": "Otto Jongerius",
   "repository": {
     "type": "git",
-    "url": "https://github.com/attest-protocol/openclaw-attest.git"
+    "url": "git+https://github.com/attest-protocol/openclaw-attest.git"
   },
   "keywords": [
     "openclaw",
@@ -24,7 +24,7 @@
     }
   },
   "bin": {
-    "openclaw-attest": "./dist/src/cli.js"
+    "openclaw-attest": "dist/src/cli.js"
   },
   "files": [
     "dist",
