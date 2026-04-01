@@ -1,25 +1,25 @@
 #!/usr/bin/env node
 
 /**
- * Receipt Explorer CLI for openclaw-attest.
+ * Receipt Explorer CLI for openclaw.
  *
  * Query and verify the SQLite receipt database outside of the agent.
  * Useful for auditing and debugging.
  *
  * Usage:
- *   openclaw-attest receipts [--risk <level>] [--action <type>] [--status <status>] [--limit <n>] [--db <path>] [--json]
- *   openclaw-attest verify [--chain <id>] [--db <path>] [--json]
- *   openclaw-attest export [--chain <id>] [--id <receipt-id>] [--format receipt|presentation] [--db <path>]
- *   openclaw-attest --help
- *   openclaw-attest --version
+ *   openclaw receipts [--risk <level>] [--action <type>] [--status <status>] [--limit <n>] [--db <path>] [--json]
+ *   openclaw verify [--chain <id>] [--db <path>] [--json]
+ *   openclaw export [--chain <id>] [--id <receipt-id>] [--format receipt|presentation] [--db <path>]
+ *   openclaw --help
+ *   openclaw --version
  */
 
 import { parseArgs } from "node:util";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
-import { openStore, verifyStoredChain } from "@attest-protocol/attest-ts";
-import type { ActionReceipt, RiskLevel, OutcomeStatus, ReceiptStore, StoreStats } from "@attest-protocol/attest-ts";
+import { openStore, verifyStoredChain } from "@agnt-rcpt/sdk-ts";
+import type { ActionReceipt, RiskLevel, OutcomeStatus, ReceiptStore, StoreStats } from "@agnt-rcpt/sdk-ts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -101,14 +101,14 @@ function loadVersion(): string {
 // ---------------------------------------------------------------------------
 
 export function helpText(): string {
-  return `openclaw-attest — Receipt Explorer CLI
+  return `openclaw — Receipt Explorer CLI
 
 Usage:
-  openclaw-attest receipts [options]   Query receipts from the audit trail
-  openclaw-attest verify  [options]    Verify chain integrity
-  openclaw-attest export  [options]    Export receipts as JSON-LD
-  openclaw-attest --help               Show this help
-  openclaw-attest --version            Show version
+  openclaw receipts [options]   Query receipts from the audit trail
+  openclaw verify  [options]    Verify chain integrity
+  openclaw export  [options]    Export receipts as JSON-LD
+  openclaw --help               Show this help
+  openclaw --version            Show version
 
 receipts options:
   --risk <level>     Filter by risk level (low, medium, high, critical)
@@ -532,7 +532,7 @@ export function run(argv: string[]): void {
       break;
 
     case "version":
-      process.stdout.write(`openclaw-attest v${loadVersion()}\n`);
+      process.stdout.write(`openclaw v${loadVersion()}\n`);
       break;
 
     case "receipts":

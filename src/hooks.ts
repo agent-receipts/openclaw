@@ -15,8 +15,8 @@ import {
   canonicalize,
   sha256,
   type ReceiptStore,
-} from "@attest-protocol/attest-ts";
-import type { TaxonomyMapping } from "@attest-protocol/attest-ts/taxonomy";
+} from "@agnt-rcpt/sdk-ts";
+import type { TaxonomyMapping } from "@agnt-rcpt/sdk-ts/taxonomy";
 
 import { classify, type TaxonomyPattern } from "./classify.js";
 import { type ChainsMap, getChainState, advanceChain } from "./chain.js";

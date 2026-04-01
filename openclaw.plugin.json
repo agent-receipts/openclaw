@@ -1,5 +1,5 @@
 {
-  "id": "openclaw-attest",
+  "id": "openclaw",
   "name": "Attest Protocol",
   "description": "Cryptographically signed audit trail for agent actions",
   "contracts": {

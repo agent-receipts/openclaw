@@ -1,12 +1,12 @@
 /**
- * Shared test utilities for openclaw-attest tests.
+ * Shared test utilities for openclaw tests.
  */
 
 import {
   generateKeyPair,
   openStore,
   type ReceiptStore,
-} from "@attest-protocol/attest-ts";
+} from "@agnt-rcpt/sdk-ts";
 import { beforeToolCall, afterToolCall, type HookDeps, type PendingMap } from "./hooks.js";
 import { type ChainsMap, type ChainState } from "./chain.js";
 import { DEFAULT_MAPPINGS, DEFAULT_PATTERNS } from "./classify.js";

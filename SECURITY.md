@@ -27,7 +27,7 @@ Security reports for this plugin cover:
 - Injection attacks through tool parameters or taxonomy config
 - Privilege escalation through the plugin's OpenClaw hooks
 
-Issues in the underlying `@attest-protocol/attest-ts` SDK should be reported to the [attest-ts repository](https://github.com/attest-protocol/attest-ts/security).
+Issues in the underlying `@agnt-rcpt/sdk-ts` SDK should be reported to the [attest-ts repository](https://github.com/agnt-rcpt/sdk-ts/security).
 
 ## Disclosure Policy
 

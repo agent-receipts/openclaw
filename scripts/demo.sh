@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Demo: generate a nice screenshot-worthy output from openclaw-attest
+# Demo: generate a nice screenshot-worthy output from openclaw
 #
 # Prerequisites:
 #   - Plugin installed and alsoAllow configured (run smoke-test.sh first)

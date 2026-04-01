@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
-# Smoke test: openclaw-attest plugin with a live OpenClaw instance
+# Smoke test: openclaw plugin with a live OpenClaw instance
 #
 # Run this inside a `script` session to record everything:
-#   script -q ~/repos/openclaw-attest/scripts/smoke-test-recording.txt bash scripts/smoke-test.sh
+#   script -q ~/repos/openclaw/scripts/smoke-test-recording.txt bash scripts/smoke-test.sh
 #
 # Prerequisites:
 #   - ANTHROPIC_API_KEY set in environment
@@ -24,7 +24,7 @@ $OPENCLAW --dev onboard --non-interactive --accept-risk --skip-health \
   --anthropic-api-key "$ANTHROPIC_API_KEY"
 
 echo ""
-echo "=== 2. Installing openclaw-attest plugin (linked) ==="
+echo "=== 2. Installing openclaw plugin (linked) ==="
 $OPENCLAW --dev plugins install . --link
 
 echo ""

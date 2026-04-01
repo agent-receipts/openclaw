@@ -1,13 +1,13 @@
-# Installing openclaw-attest
+# Installing openclaw
 
 ## Quick start
 
 ```bash
 # Install the plugin
-openclaw plugins install @attest-protocol/openclaw-attest
+openclaw plugins install @agnt-rcpt/openclaw
 
 # Or link a local clone for development
-openclaw plugins install /path/to/openclaw-attest --link
+openclaw plugins install /path/to/openclaw --link
 ```
 
 ## Tool visibility
@@ -34,7 +34,7 @@ tools, or allowlist the entire plugin by ID:
 ```jsonc
 {
   "tools": {
-    "alsoAllow": ["openclaw-attest"]
+    "alsoAllow": ["openclaw"]
   }
 }
 ```
@@ -47,7 +47,7 @@ All config is optional with sensible defaults:
 {
   "plugins": {
     "entries": {
-      "openclaw-attest": {
+      "openclaw": {
         "enabled": true,
         "config": {
           "enabled": true,
