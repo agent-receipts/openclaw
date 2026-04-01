@@ -1,6 +1,6 @@
 {
   "name": "@attest-protocol/openclaw-attest",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Cryptographically signed audit trail for OpenClaw agent actions via Attest Protocol",
   "type": "module",
   "license": "MIT",
