@@ -47,5 +47,3 @@ jobs:
       - run: pnpm run build
 
       - run: pnpm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
