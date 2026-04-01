@@ -3,7 +3,7 @@
 # Smoke test: openclaw-attest plugin with a live OpenClaw instance
 #
 # Run this inside a `script` session to record everything:
-#   script -q ~/repos/openclaw-attest/docs/smoke-test-recording.txt bash docs/smoke-test.sh
+#   script -q ~/repos/openclaw-attest/scripts/smoke-test-recording.txt bash scripts/smoke-test.sh
 #
 # Prerequisites:
 #   - ANTHROPIC_API_KEY set in environment

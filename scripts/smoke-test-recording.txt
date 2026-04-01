@@ -1,0 +1,409 @@
+=== 1. Setting up isolated dev environment ===
+
+[1m[38;2;255;90;45m🦞 OpenClaw[39m[22m [38;2;255;138;91m2026.3.28[39m [38;2;139;127;119m(f9b1079)[39m [38;2;139;127;119m—[39m [38;2;209;74;34mThe only crab in your contacts you actually want to hear from. 🦞[39m
+
+Config overwrite: /Users/ottojongerius/.openclaw-dev/openclaw.json (sha256 7f799bfc082a8a13f135cc300f3299794f75ea0737fb7e7d7da5fb57f370c057 -> 4e0c1d45b277029456c9789075bdb9bafdb1be37bb6524a7b087a4b79b31a9d6, backup=/Users/ottojongerius/.openclaw-dev/openclaw.json.bak)
+Updated ~/.openclaw-dev/openclaw.json
+Workspace OK: ~/.openclaw/workspace-dev
+Sessions OK: ~/.openclaw-dev/agents/main/sessions
+Tip: run `openclaw --profile dev configure --section web` to store your Brave API key for web_search. Docs: https://docs.openclaw.ai/tools/web
+⠙[1G[0K
+=== 2. Installing openclaw-attest plugin (linked) ===
+[90m16:21:56+13:00[39m [35m[plugins][39m [36mattest: keys loaded from /Users/ottojongerius/.openclaw/attest/keys.json[39m
+[90m16:21:56+13:00[39m [35m[plugins][39m [36mattest: receipt store opened at /Users/ottojongerius/.openclaw/attest/receipts.db[39m
+[90m16:21:56+13:00[39m [35m[plugins][39m [36mattest: plugin registered — receipts will be generated for all tool calls[39m
+
+[1m[38;2;255;90;45m🦞 OpenClaw[39m[22m [38;2;255;138;91m2026.3.28[39m [38;2;139;127;119m(f9b1079)[39m [38;2;139;127;119m—[39m [38;2;209;74;34mYou had me at 'openclaw gateway start.'[39m
+
+[90m16:21:56+13:00[39m [35m[plugins][39m [36mattest: keys loaded from /Users/ottojongerius/.openclaw/attest/keys.json[39m
+[90m16:21:56+13:00[39m [35m[plugins][39m [36mattest: receipt store opened at /Users/ottojongerius/.openclaw/attest/receipts.db[39m
+[90m16:21:56+13:00[39m [35m[plugins][39m [36mattest: plugin registered — receipts will be generated for all tool calls[39m
+Config overwrite: /Users/ottojongerius/.openclaw-dev/openclaw.json (sha256 4e0c1d45b277029456c9789075bdb9bafdb1be37bb6524a7b087a4b79b31a9d6 -> 9aa3785d7ddcb85498ef88bc01ac077581b1cb0dead64df927d61c67b513b7cd, backup=/Users/ottojongerius/.openclaw-dev/openclaw.json.bak)
+Linked plugin path: ~/repos/openclaw-attest
+Restart the gateway to load plugins.
+⠙[1G[0K
+=== 3. Verifying plugin is installed ===
+[90m16:21:58+13:00[39m [35m[plugins][39m [36mattest: keys loaded from /Users/ottojongerius/.openclaw/attest/keys.json[39m
+[90m16:21:58+13:00[39m [35m[plugins][39m [36mattest: receipt store opened at /Users/ottojongerius/.openclaw/attest/receipts.db[39m
+[90m16:21:58+13:00[39m [35m[plugins][39m [36mattest: plugin registered — receipts will be generated for all tool calls[39m
+
+[1m[38;2;255;90;45m🦞 OpenClaw[39m[22m [38;2;255;138;91m2026.3.28[39m [38;2;139;127;119m(f9b1079)[39m
+   [38;2;209;74;34mI don't sleep, I just enter low-power mode and dream of clean diffs.[39m
+
+[90m16:21:58+13:00[39m [35m[plugins][39m [36mattest: keys loaded from /Users/ottojongerius/.openclaw/attest/keys.json[39m
+[90m16:21:58+13:00[39m [35m[plugins][39m [36mattest: receipt store opened at /Users/ottojongerius/.openclaw/attest/receipts.db[39m
+[90m16:21:58+13:00[39m [35m[plugins][39m [36mattest: plugin registered — receipts will be generated for all tool calls[39m
+[1m[38;2;255;90;45mPlugins[39m[22m [38;2;139;127;119m(42/83 loaded)[39m
+[38;2;139;127;119mSource roots:[39m
+  [38;2;255;122;61mstock:[39m [38;2;139;127;119m/Users/ottojongerius/repos/openclaw-attest/node_modules/.pnpm/openclaw@2026.3.28_@napi-rs+canvas@0.1.97/node_modules/openclaw/dist/extensions[39m
+
+┌──────────────┬──────────┬──────────┬──────────┬──────────────────────────────────────┬───────────┐
+│ Name         │ ID       │ Format   │ Status   │ Source                               │ Version   │
+├──────────────┼──────────┼──────────┼──────────┼──────────────────────────────────────┼───────────┤
+│ Attest       │ openclaw │ openclaw │ [38;2;47;191;113mloaded[39m   │ ~/repos/openclaw-attest/src/index.ts[39m │ 0.1.0     │
+│ Protocol     │ -attest  │          │          │ [38;2;139;127;119mCryptographically signed audit[39m       │           │
+│              │          │          │          │ trail for agent actions[39m              │           │
+│ ACPX Runtime │ acpx     │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:acpx/index.js[39m                  │ 2026.3.28 │
+│              │          │          │          │ [38;2;139;127;119mACP runtime backend powered by acpx[39m  │           │
+│              │          │          │          │ with configurable command path and[39m   │           │
+│              │          │          │          │ version policy.[39m                      │           │
+│ Amazon       │ amazon-  │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:amazon-bedrock/index.js[39m        │ 2026.3.28 │
+│ Bedrock      │ bedrock  │          │          │ [38;2;139;127;119mBundled Amazon Bedrock provider[39m      │           │
+│ Provider     │          │          │          │ policy plugin[39m                        │           │
+│ Anthropic    │ anthropi │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:anthropic/index.js[39m             │ 2026.3.28 │
+│ Provider     │ c        │          │          │ [38;2;139;127;119mBundled Anthropic provider plugin[39m    │           │
+│ @openclaw/   │ bluebubb │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:bluebubbles/index.js[39m           │ 2026.3.28 │
+│ bluebubbles  │ les      │          │          │ [38;2;139;127;119mOpenClaw BlueBubbles channel plugin[39m  │           │
+│ @openclaw/   │ brave    │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:brave/index.js[39m                 │ 2026.3.28 │
+│ brave-plugin │          │          │          │ [38;2;139;127;119mOpenClaw Brave plugin[39m                │           │
+│ Browser      │ browser  │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:browser/index.js[39m               │ 2026.3.28 │
+│              │          │          │          │ [38;2;139;127;119mDefault browser tool plugin[39m          │           │
+│ BytePlus     │ byteplus │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:byteplus/index.js[39m              │ 2026.3.28 │
+│ Provider     │          │          │          │ [38;2;139;127;119mBundled BytePlus provider plugin[39m     │           │
+│ Chutes       │ chutes   │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:chutes/index.js[39m                │ 2026.3.28 │
+│ Provider     │          │          │          │ [38;2;139;127;119mBundled Chutes.ai provider plugin[39m    │           │
+│ Cloudflare   │ cloudfla │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:cloudflare-ai-gateway/index.js[39m │ 2026.3.28 │
+│ AI Gateway   │ re-ai-   │          │          │ [38;2;139;127;119mBundled Cloudflare AI Gateway[39m        │           │
+│ Provider     │ gateway  │          │          │ provider plugin[39m                      │           │
+│ Copilot      │ copilot- │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:copilot-proxy/index.js[39m         │ 2026.3.28 │
+│ Proxy        │ proxy    │          │          │ [38;2;139;127;119mLocal Copilot Proxy (VS Code LM)[39m     │           │
+│              │          │          │          │ provider plugin[39m                      │           │
+│ @openclaw/   │ deepgram │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:deepgram/index.js[39m              │ 2026.3.28 │
+│ deepgram-    │          │          │          │ [38;2;139;127;119mOpenClaw Deepgram media-[39m             │           │
+│ provider     │          │          │          │ understanding provider[39m               │           │
+│ DeepSeek     │ deepseek │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:deepseek/index.js[39m              │ 2026.3.28 │
+│ Provider     │          │          │          │ [38;2;139;127;119mBundled DeepSeek provider plugin[39m     │           │
+│ @openclaw/   │ diagnost │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:diagnostics-otel/index.js[39m      │ 2026.3.28 │
+│ diagnostics- │ ics-otel │          │          │ [38;2;139;127;119mOpenClaw diagnostics OpenTelemetry[39m   │           │
+│ otel         │          │          │          │ exporter[39m                             │           │
+│ Diffs        │ diffs    │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:diffs/index.js[39m                 │ 2026.3.28 │
+│              │          │          │          │ [38;2;139;127;119mRead-only diff viewer and file[39m       │           │
+│              │          │          │          │ renderer for agents.[39m                 │           │
+│ @openclaw/   │ discord  │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:discord/index.js[39m               │ 2026.3.28 │
+│ discord      │          │          │          │ [38;2;139;127;119mOpenClaw Discord channel plugin[39m      │           │
+│ @openclaw/   │ duckduck │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:duckduckgo/index.js[39m            │ 2026.3.28 │
+│ duckduckgo-  │ go       │          │          │ [38;2;139;127;119mOpenClaw DuckDuckGo plugin[39m           │           │
+│ plugin       │          │          │          │                                      │           │
+│ @openclaw/   │ elevenla │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:elevenlabs/index.js[39m            │ 2026.3.28 │
+│ elevenlabs-  │ bs       │          │          │ [38;2;139;127;119mOpenClaw ElevenLabs speech plugin[39m    │           │
+│ speech       │          │          │          │                                      │           │
+│ @openclaw/   │ exa      │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:exa/index.js[39m                   │ 2026.3.28 │
+│ exa-plugin   │          │          │          │ [38;2;139;127;119mOpenClaw Exa plugin[39m                  │           │
+│ fal Provider │ fal      │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:fal/index.js[39m                   │ 2026.3.28 │
+│              │          │          │          │ [38;2;139;127;119mBundled fal image generation[39m         │           │
+│              │          │          │          │ provider[39m                             │           │
+│ @openclaw/   │ feishu   │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:feishu/index.js[39m                │ 2026.3.28 │
+│ feishu       │          │          │          │ [38;2;139;127;119mOpenClaw Feishu/Lark channel plugin[39m  │           │
+│              │          │          │          │ (community maintained by @m1heng)[39m    │           │
+│ @openclaw/   │ firecraw │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:firecrawl/index.js[39m             │ 2026.3.28 │
+│ firecrawl-   │ l        │          │          │ [38;2;139;127;119mOpenClaw Firecrawl plugin[39m            │           │
+│ plugin       │          │          │          │                                      │           │
+│ GitHub       │ github-  │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:github-copilot/index.js[39m        │ 2026.3.28 │
+│ Copilot      │ copilot  │          │          │ [38;2;139;127;119mBundled GitHub Copilot provider[39m      │           │
+│ Provider     │          │          │          │ plugin[39m                               │           │
+│ Google       │ google   │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:google/index.js[39m                │ 2026.3.28 │
+│ Plugin       │          │          │          │ [38;2;139;127;119mBundled Google plugin[39m                │           │
+│ @openclaw/   │ googlech │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:googlechat/index.js[39m            │ 2026.3.28 │
+│ googlechat   │ at       │          │          │ [38;2;139;127;119mOpenClaw Google Chat channel plugin[39m  │           │
+│ @openclaw/   │ groq     │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:groq/index.js[39m                  │ 2026.3.28 │
+│ groq-        │          │          │          │ [38;2;139;127;119mOpenClaw Groq media-understanding[39m    │           │
+│ provider     │          │          │          │ provider[39m                             │           │
+│ Hugging      │ huggingf │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:huggingface/index.js[39m           │ 2026.3.28 │
+│ Face         │ ace      │          │          │ [38;2;139;127;119mBundled Hugging Face provider plugin[39m │           │
+│ Provider     │          │          │          │                                      │           │
+│ @openclaw/   │ imessage │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:imessage/index.js[39m              │ 2026.3.28 │
+│ imessage     │          │          │          │ [38;2;139;127;119mOpenClaw iMessage channel plugin[39m     │           │
+│ @openclaw/   │ irc      │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:irc/index.js[39m                   │ 2026.3.28 │
+│ irc          │          │          │          │ [38;2;139;127;119mOpenClaw IRC channel plugin[39m          │           │
+│ Kilo         │ kilocode │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:kilocode/index.js[39m              │ 2026.3.28 │
+│ Gateway      │          │          │          │ [38;2;139;127;119mBundled Kilo Gateway provider plugin[39m │           │
+│ Provider     │          │          │          │                                      │           │
+│ Kimi         │ kimi     │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:kimi-coding/index.js[39m           │ 2026.3.28 │
+│ Provider     │          │          │          │ [38;2;139;127;119mBundled Kimi provider plugin[39m         │           │
+│ @openclaw/   │ line     │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:line/index.js[39m                  │ 2026.3.28 │
+│ line         │          │          │          │ [38;2;139;127;119mOpenClaw LINE channel plugin[39m         │           │
+│ LiteLLM      │ litellm  │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:litellm/index.js[39m               │ 2026.3.28 │
+│ Provider     │          │          │          │ [38;2;139;127;119mBundled LiteLLM provider plugin[39m      │           │
+│ LLM Task     │ llm-task │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:llm-task/index.js[39m              │ 2026.3.28 │
+│              │          │          │          │ [38;2;139;127;119mGeneric JSON-only LLM tool for[39m       │           │
+│              │          │          │          │ structured tasks callable from[39m       │           │
+│              │          │          │          │ workflows.[39m                           │           │
+│ Lobster      │ lobster  │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:lobster/index.js[39m               │ 2026.3.28 │
+│              │          │          │          │ [38;2;139;127;119mTyped workflow tool with resumable[39m   │           │
+│              │          │          │          │ approvals.[39m                           │           │
+│ @openclaw/   │ matrix   │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:matrix/index.js[39m                │ 2026.3.28 │
+│ matrix       │          │          │          │ [38;2;139;127;119mOpenClaw Matrix channel plugin[39m       │           │
+│ @openclaw/   │ mattermo │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:mattermost/index.js[39m            │ 2026.3.28 │
+│ mattermost   │ st       │          │          │ [38;2;139;127;119mOpenClaw Mattermost channel plugin[39m   │           │
+│ Memory       │ memory-  │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:memory-core/index.js[39m           │ 2026.3.28 │
+│ (Core)       │ core     │          │          │ [38;2;139;127;119mFile-backed memory search tools and[39m  │           │
+│              │          │          │          │ CLI[39m                                  │           │
+│ @openclaw/   │ memory-  │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:memory-lancedb/index.js[39m        │ 2026.3.28 │
+│ memory-      │ lancedb  │          │          │ [38;2;139;127;119mOpenClaw LanceDB-backed long-term[39m    │           │
+│ lancedb      │          │          │          │ memory plugin with auto-recall/[39m      │           │
+│              │          │          │          │ capture[39m                              │           │
+│ @openclaw/   │ microsof │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:microsoft/index.js[39m             │ 2026.3.28 │
+│ microsoft-   │ t        │          │          │ [38;2;139;127;119mOpenClaw Microsoft speech plugin[39m     │           │
+│ speech       │          │          │          │                                      │           │
+│ Microsoft    │ microsof │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:microsoft-foundry/index.js[39m     │ 2026.3.28 │
+│ Foundry      │ t-       │          │          │ [38;2;139;127;119mMicrosoft Foundry provider with[39m      │           │
+│ Provider     │ foundry  │          │          │ Entra ID and API key auth[39m            │           │
+│ MiniMax      │ minimax  │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:minimax/index.js[39m               │ 2026.3.28 │
+│              │          │          │          │ [38;2;139;127;119mBundled MiniMax API-key and OAuth[39m    │           │
+│              │          │          │          │ provider plugin[39m                      │           │
+│ Mistral      │ mistral  │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:mistral/index.js[39m               │ 2026.3.28 │
+│ Provider     │          │          │          │ [38;2;139;127;119mBundled Mistral provider plugin[39m      │           │
+│ Model        │ modelstu │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:modelstudio/index.js[39m           │ 2026.3.28 │
+│ Studio       │ dio      │          │          │ [38;2;139;127;119mBundled Model Studio provider plugin[39m │           │
+│ Provider     │          │          │          │                                      │           │
+│ Moonshot     │ moonshot │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:moonshot/index.js[39m              │ 2026.3.28 │
+│ Provider     │          │          │          │ [38;2;139;127;119mBundled Moonshot provider plugin[39m     │           │
+│ @openclaw/   │ msteams  │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:msteams/index.js[39m               │ 2026.3.28 │
+│ msteams      │          │          │          │ [38;2;139;127;119mOpenClaw Microsoft Teams channel[39m     │           │
+│              │          │          │          │ plugin[39m                               │           │
+│ @openclaw/   │ nextclou │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:nextcloud-talk/index.js[39m        │ 2026.3.28 │
+│ nextcloud-   │ d-talk   │          │          │ [38;2;139;127;119mOpenClaw Nextcloud Talk channel[39m      │           │
+│ talk         │          │          │          │ plugin[39m                               │           │
+│ @openclaw/   │ nostr    │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:nostr/index.js[39m                 │ 2026.3.28 │
+│ nostr        │          │          │          │ [38;2;139;127;119mOpenClaw Nostr channel plugin for[39m    │           │
+│              │          │          │          │ NIP-04 encrypted DMs[39m                 │           │
+│ NVIDIA       │ nvidia   │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:nvidia/index.js[39m                │ 2026.3.28 │
+│ Provider     │          │          │          │ [38;2;139;127;119mBundled NVIDIA provider plugin[39m       │           │
+│ Ollama       │ ollama   │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:ollama/index.js[39m                │ 2026.3.28 │
+│ Provider     │          │          │          │ [38;2;139;127;119mBundled Ollama provider plugin[39m       │           │
+│ OpenProse    │ open-    │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:open-prose/index.js[39m            │ 2026.3.28 │
+│              │ prose    │          │          │ [38;2;139;127;119mOpenProse VM skill pack with a /[39m     │           │
+│              │          │          │          │ prose slash command.[39m                 │           │
+│ OpenAI       │ openai   │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:openai/index.js[39m                │ 2026.3.28 │
+│ Provider     │          │          │          │ [38;2;139;127;119mBundled OpenAI provider plugins[39m      │           │
+│ OpenCode     │ opencode │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:opencode/index.js[39m              │ 2026.3.28 │
+│ Zen Provider │          │          │          │ [38;2;139;127;119mBundled OpenCode Zen provider plugin[39m │           │
+│ OpenCode Go  │ opencode │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:opencode-go/index.js[39m           │ 2026.3.28 │
+│ Provider     │ -go      │          │          │ [38;2;139;127;119mBundled OpenCode Go provider plugin[39m  │           │
+│ OpenRouter   │ openrout │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:openrouter/index.js[39m            │ 2026.3.28 │
+│ Provider     │ er       │          │          │ [38;2;139;127;119mBundled OpenRouter provider plugin[39m   │           │
+│ OpenShell    │ openshel │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:openshell/index.js[39m             │ 2026.3.28 │
+│ Sandbox      │ l        │          │          │ [38;2;139;127;119mSandbox backend powered by[39m           │           │
+│              │          │          │          │ OpenShell with mirrored local[39m        │           │
+│              │          │          │          │ workspaces and SSH-based command[39m     │           │
+│              │          │          │          │ execution.[39m                           │           │
+│ @openclaw/   │ perplexi │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:perplexity/index.js[39m            │ 2026.3.28 │
+│ perplexity-  │ ty       │          │          │ [38;2;139;127;119mOpenClaw Perplexity plugin[39m           │           │
+│ plugin       │          │          │          │                                      │           │
+│ Qianfan      │ qianfan  │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:qianfan/index.js[39m               │ 2026.3.28 │
+│ Provider     │          │          │          │ [38;2;139;127;119mBundled Qianfan provider plugin[39m      │           │
+│ SGLang       │ sglang   │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:sglang/index.js[39m                │ 2026.3.28 │
+│ Provider     │          │          │          │ [38;2;139;127;119mBundled SGLang provider plugin[39m       │           │
+│ @openclaw/   │ signal   │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:signal/index.js[39m                │ 2026.3.28 │
+│ signal       │          │          │          │ [38;2;139;127;119mOpenClaw Signal channel plugin[39m       │           │
+│ @openclaw/   │ slack    │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:slack/index.js[39m                 │ 2026.3.28 │
+│ slack        │          │          │          │ [38;2;139;127;119mOpenClaw Slack channel plugin[39m        │           │
+│ @openclaw/   │ synology │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:synology-chat/index.js[39m         │ 2026.3.28 │
+│ synology-    │ -chat    │          │          │ [38;2;139;127;119mSynology Chat channel plugin for[39m     │           │
+│ chat         │          │          │          │ OpenClaw[39m                             │           │
+│ Synthetic    │ syntheti │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:synthetic/index.js[39m             │ 2026.3.28 │
+│ Provider     │ c        │          │          │ [38;2;139;127;119mBundled Synthetic provider plugin[39m    │           │
+│ @openclaw/   │ tavily   │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:tavily/index.js[39m                │ 2026.3.28 │
+│ tavily-      │          │          │          │ [38;2;139;127;119mOpenClaw Tavily plugin[39m               │           │
+│ plugin       │          │          │          │                                      │           │
+│ @openclaw/   │ telegram │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:telegram/index.js[39m              │ 2026.3.28 │
+│ telegram     │          │          │          │ [38;2;139;127;119mOpenClaw Telegram channel plugin[39m     │           │
+│ @openclaw/   │ tlon     │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:tlon/index.js[39m                  │ 2026.3.28 │
+│ tlon         │          │          │          │ [38;2;139;127;119mOpenClaw Tlon/Urbit channel plugin[39m   │           │
+│ Together     │ together │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:together/index.js[39m              │ 2026.3.28 │
+│ Provider     │          │          │          │ [38;2;139;127;119mBundled Together provider plugin[39m     │           │
+│ @openclaw/   │ twitch   │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:twitch/index.js[39m                │ 2026.3.28 │
+│ twitch       │          │          │          │ [38;2;139;127;119mOpenClaw Twitch channel plugin[39m       │           │
+│ Venice       │ venice   │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:venice/index.js[39m                │ 2026.3.28 │
+│ Provider     │          │          │          │ [38;2;139;127;119mBundled Venice provider plugin[39m       │           │
+│ Vercel AI    │ vercel-  │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:vercel-ai-gateway/index.js[39m     │ 2026.3.28 │
+│ Gateway      │ ai-      │          │          │ [38;2;139;127;119mBundled Vercel AI Gateway provider[39m   │           │
+│ Provider     │ gateway  │          │          │ plugin[39m                               │           │
+│ vLLM         │ vllm     │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:vllm/index.js[39m                  │ 2026.3.28 │
+│ Provider     │          │          │          │ [38;2;139;127;119mBundled vLLM provider plugin[39m         │           │
+│ @openclaw/   │ voice-   │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:voice-call/index.js[39m            │ 2026.3.28 │
+│ voice-call   │ call     │          │          │ [38;2;139;127;119mOpenClaw voice-call plugin[39m           │           │
+│ Volcengine   │ volcengi │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:volcengine/index.js[39m            │ 2026.3.28 │
+│ Provider     │ ne       │          │          │ [38;2;139;127;119mBundled Volcengine provider plugin[39m   │           │
+│ @openclaw/   │ whatsapp │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:whatsapp/index.js[39m              │ 2026.3.28 │
+│ whatsapp     │          │          │          │ [38;2;139;127;119mOpenClaw WhatsApp channel plugin[39m     │           │
+│ xAI Plugin   │ xai      │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:xai/index.js[39m                   │ 2026.3.28 │
+│              │          │          │          │ [38;2;139;127;119mBundled xAI plugin[39m                   │           │
+│ Xiaomi       │ xiaomi   │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:xiaomi/index.js[39m                │ 2026.3.28 │
+│ Provider     │          │          │          │ [38;2;139;127;119mBundled Xiaomi provider plugin[39m       │           │
+│ Z.AI         │ zai      │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:zai/index.js[39m                   │ 2026.3.28 │
+│ Provider     │          │          │          │ [38;2;139;127;119mBundled Z.AI provider plugin[39m         │           │
+│ @openclaw/   │ zalo     │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:zalo/index.js[39m                  │ 2026.3.28 │
+│ zalo         │          │          │          │ [38;2;139;127;119mOpenClaw Zalo channel plugin[39m         │           │
+│ @openclaw/   │ zalouser │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:zalouser/index.js[39m              │ 2026.3.28 │
+│ zalouser     │          │          │          │ [38;2;139;127;119mOpenClaw Zalo Personal Account[39m       │           │
+│              │          │          │          │ plugin via native zca-js integration[39m │           │
+│ Device Pair  │ device-  │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:device-pair/index.js[39m           │ 2026.3.28 │
+│              │ pair     │          │          │ [38;2;139;127;119mQR/bootstrap pairing helpers for[39m     │           │
+│              │          │          │          │ OpenClaw devices[39m                     │           │
+│ Phone        │ phone-   │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:phone-control/index.js[39m         │ 2026.3.28 │
+│ Control      │ control  │          │          │ [38;2;139;127;119mTemporary allowlist control for[39m      │           │
+│              │          │          │          │ phone automation commands[39m            │           │
+│ Talk Voice   │ talk-    │ openclaw │ [38;2;47;191;113mloaded[39m   │ stock:talk-voice/index.js[39m            │ 2026.3.28 │
+│              │ voice    │          │          │ [38;2;139;127;119mCommand helpers for managing Talk[39m    │           │
+│              │          │          │          │ voice configuration[39m                  │           │
+│ Thread       │ thread-  │ openclaw │ [38;2;255;176;32mdisabled[39m │ stock:thread-ownership/index.js[39m      │ 2026.3.28 │
+│ Ownership    │ ownershi │          │          │ [38;2;139;127;119mPrevents multiple agents from[39m        │           │
+│              │ p        │          │          │ responding in the same Slack thread.[39m │           │
+│              │          │          │          │ Uses HTTP calls to the slack-[39m        │           │
+│              │          │          │          │ forwarder ownership API.[39m             │           │
+└──────────────┴──────────┴──────────┴──────────┴──────────────────────────────────────┴───────────┘
+⠙[1G[0K
+=== 3b. Clearing old sessions and receipts for clean run ===
+
+=== 4. Starting gateway in background ===
+
+[1m[38;2;255;90;45m🦞 OpenClaw[39m[22m [38;2;255;138;91m2026.3.28[39m [38;2;139;127;119m(f9b1079)[39m [38;2;139;127;119m—[39m [38;2;209;74;34miMessage green bubble energy, but for everyone.[39m
+
+[90m16:21:59+13:00[39m [36m[gateway][39m [33mauth mode=none explicitly configured; all gateway connections are unauthenticated.[39m
+[90m16:21:59+13:00[39m [36m[gateway][39m [36mattest: keys loaded from /Users/ottojongerius/.openclaw/attest/keys.json[39m
+[90m16:21:59+13:00[39m [36m[gateway][39m [36mattest: receipt store opened at /Users/ottojongerius/.openclaw/attest/receipts.db[39m
+[90m16:21:59+13:00[39m [36m[gateway][39m [36mattest: plugin registered — receipts will be generated for all tool calls[39m
+[90m16:21:59+13:00[39m [35m[canvas][39m [36mhost mounted at http://127.0.0.1:19001/__openclaw__/canvas/ (root /Users/ottojongerius/.openclaw-dev/canvas)[39m
+16:21:59+13:00 [38;2;139;127;119mbonjour: starting (hostname=openclaw, instance="Otto’s MacBook Air (OpenClaw)", gatewayPort=19001, minimal=true)[39m
+[90m16:21:59+13:00[39m [36m[heartbeat][39m [36mstarted[39m
+[90m16:21:59+13:00[39m [32m[health-monitor][39m [36mstarted (interval: 300s, startup-grace: 60s, channel-connect-grace: 120s)[39m
+[90m16:21:59+13:00[39m [36m[gateway][39m [36magent model: [97manthropic/claude-opus-4-6[39m[36m[39m
+[90m16:21:59+13:00[39m [36m[gateway][39m [36mlistening on ws://127.0.0.1:19001, ws://[::1]:19001 (PID 51922)[39m
+[90m16:21:59+13:00[39m [36m[gateway][39m [36mlog file: /tmp/openclaw/openclaw-2026-04-01.log[39m
+
+=== 5. Triggering tool calls + querying receipts ===
+
+[1m[38;2;255;90;45m🦞 OpenClaw[39m[22m [38;2;255;138;91m2026.3.28[39m [38;2;139;127;119m(f9b1079)[39m [38;2;139;127;119m—[39m [38;2;209;74;34mYour config is valid, your assumptions are not.[39m
+
+[?25l[90m│[39m
+]9;4;3;;Waiting for agent reply…\[90m16:22:04+13:00[39m [36m[ws][39m [36m[92m←[39m[36m [1mopen[22m [2mremoteAddr[22m=127.0.0.1 [2mconn[22m=[90m31e9801a…6f3e[39m[36m[39m
+[90m16:22:04+13:00[39m [36m[ws][39m [36m[92m←[39m[36m [1mconnect[22m [2mclient[22m=cli [2mversion[22m=2026.3.28 [2mmode[22m=cli [2mclientId[22m=cli [2mplatform[22m=darwin [2mauth[22m=none[39m
+[90m16:22:04+13:00[39m [36m[ws][39m [36m[96m→[39m[36m [1mhello-ok[22m [2mmethods[22m=111 [2mevents[22m=24 [2mpresence[22m=1 [2mstateVersion[22m=1[39m
+[90m16:22:04+13:00[39m [36m[ws][39m [36m[96m→[39m[36m [1mevent[22m [1mhealth[22m [2mseq[22m=1 [2mclients[22m=1 [2mpresenceVersion[22m=1 [2mhealthVersion[22m=3[39m
+[90m16:22:04+13:00[39m [36m[ws][39m [36m[93m⇄[39m[36m [1mres[22m [92m✓[39m[36m [1magent[22m [2m14ms[22m [2mrunId[22m=c63f0305-f288-4a79-92eb-dfc33aca7be3 [2mid[22m=[90m73755ab2…0254[39m[36m[39m
+[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m[90m16:22:05+13:00[39m [31m[agents/model-providers][39m [36m[xai-auth] bootstrap config fallback: no config-backed key found[39m
+[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[90m16:22:06+13:00[39m [31m[diagnostic][39m [90mlane enqueue: lane=session:agent:main:main queueSize=1[39m
+[90m16:22:06+13:00[39m [31m[diagnostic][39m [90mlane dequeue: lane=session:agent:main:main waitMs=1 queueSize=0[39m
+[90m16:22:06+13:00[39m [31m[diagnostic][39m [90mlane enqueue: lane=main queueSize=1[39m
+[90m16:22:06+13:00[39m [31m[diagnostic][39m [90mlane dequeue: lane=main waitMs=0 queueSize=0[39m
+[90m16:22:06+13:00[39m [35m[plugins][39m [36mattest: keys loaded from /Users/ottojongerius/.openclaw/attest/keys.json[39m
+[90m16:22:06+13:00[39m [35m[plugins][39m [36mattest: receipt store opened at /Users/ottojongerius/.openclaw/attest/receipts.db[39m
+[90m16:22:06+13:00[39m [35m[plugins][39m [36mattest: plugin registered — receipts will be generated for all tool calls[39m
+16:22:06+13:00 [38;2;139;127;119mRegistered plugin command: /pair (plugin: device-pair)[39m
+[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m..16:22:06+13:00 [38;2;139;127;119mRegistered plugin command: /phone (plugin: phone-control)[39m
+16:22:06+13:00 [38;2;139;127;119mRegistered plugin command: /voice (plugin: talk-voice)[39m
+[90m16:22:06+13:00[39m [33m[agent/embedded][39m [90membedded run start: runId=c63f0305-f288-4a79-92eb-dfc33aca7be3 sessionId=a4bdbf31-f926-4390-85de-b0c8fcbc0f0a provider=anthropic model=claude-opus-4-6 thinking=adaptive messageChannel=webchat[39m
+[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m..16:22:06+13:00 [38;2;139;127;119mweb_search: no provider configured and no credentials found, falling back to keyless provider "duckduckgo"[39m
+[90m16:22:06+13:00[39m [35m[plugins][39m [90mplugin tool factory returned null (xai): [code_execution][39m
+[90m16:22:06+13:00[39m [35m[plugins][39m [90mplugin tool factory returned null (xai): [x_search][39m
+[90m16:22:06+13:00[39m [34m[tools][39m [33mtools.profile (coding) allowlist contains unknown entries (apply_patch, code_execution, x_search, image_generate). These entries are shipped core tools but unavailable in the current runtime/provider/model/config.[39m
+[90m16:22:06+13:00[39m [31m[diagnostic][39m [90msession state: sessionId=a4bdbf31-f926-4390-85de-b0c8fcbc0f0a sessionKey=agent:main:main prev=idle new=processing reason="run_started" queueDepth=0[39m
+[90m16:22:06+13:00[39m [31m[diagnostic][39m [90mrun registered: sessionId=a4bdbf31-f926-4390-85de-b0c8fcbc0f0a totalActive=1[39m
+[90m16:22:06+13:00[39m [33m[agent/embedded][39m [90membedded run prompt start: runId=c63f0305-f288-4a79-92eb-dfc33aca7be3 sessionId=a4bdbf31-f926-4390-85de-b0c8fcbc0f0a[39m
+[90m16:22:06+13:00[39m [33m[agent/embedded][39m [90m[context-diag] pre-prompt: sessionKey=agent:main:main messages=0 roleCounts=none historyTextChars=0 maxMessageTextChars=0 historyImageBlocks=0 systemPromptChars=28954 promptChars=188 promptImages=0 provider=anthropic/claude-opus-4-6 sessionFile=/Users/ottojongerius/.openclaw-dev/agents/main/sessions/a4bdbf31-f926-4390-85de-b0c8fcbc0f0a.jsonl[39m
+[90m16:22:06+13:00[39m [33m[agent/embedded][39m [90membedded run agent start: runId=c63f0305-f288-4a79-92eb-dfc33aca7be3[39m
+[90m16:22:06+13:00[39m [36m[ws][39m [36m[96m→[39m[36m [1mevent[22m [1magent[22m [2mseq[22m=2 [2mclients[22m=1 [2mrun[22m=c63f0305…7be3 [2magent[22m=main [2msession[22m=main [2mstream[22m=lifecycle [2maseq[22m=1 [2mphase[22m=start[39m
+[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m[90m16:22:10+13:00[39m [33m[agent/embedded][39m [90membedded run tool start: runId=c63f0305-f288-4a79-92eb-dfc33aca7be3 tool=exec toolCallId=toolu_01NpRZ5XeQsugP3gQXKGMmfF[39m
+[90m16:22:10+13:00[39m [33m[agent/embedded][39m [90membedded run tool start: runId=c63f0305-f288-4a79-92eb-dfc33aca7be3 tool=attest_query_receipts toolCallId=toolu_019eVzEpi1E52EQLyfmK6oMD[39m
+[90m16:22:10+13:00[39m [33m[agent/embedded][39m [90membedded run tool start: runId=c63f0305-f288-4a79-92eb-dfc33aca7be3 tool=attest_verify_chain toolCallId=toolu_01WdG4Lb62PBk4kdgg2Qd9Yc[39m
+[90m16:22:10+13:00[39m [35m[plugins][39m [90m[hooks] running before_tool_call (1 handlers, sequential)[39m
+[90m16:22:10+13:00[39m [35m[plugins][39m [90m[hooks] running before_tool_call (1 handlers, sequential)[39m
+[90m16:22:10+13:00[39m [35m[plugins][39m [90m[hooks] running before_tool_call (1 handlers, sequential)[39m
+[90m16:22:10+13:00[39m [33m[agent/embedded][39m [90membedded run tool end: runId=c63f0305-f288-4a79-92eb-dfc33aca7be3 tool=exec toolCallId=toolu_01NpRZ5XeQsugP3gQXKGMmfF[39m
+[90m16:22:10+13:00[39m [35m[plugins][39m [90m[hooks] running after_tool_call (1 handlers)[39m
+[90m16:22:10+13:00[39m [35m[plugins][39m [36mattest: receipt urn:receipt:332ff922-023f-4878-83fa-bd78b2015bb2 (system.command.execute, high) → chain chain_openclaw_agent:main:main_a4bdbf31-f926-4390-85de-b0c8fcbc0f0a seq 1[39m
+[90m16:22:10+13:00[39m [33m[agent/embedded][39m [90membedded run tool end: runId=c63f0305-f288-4a79-92eb-dfc33aca7be3 tool=attest_query_receipts toolCallId=toolu_019eVzEpi1E52EQLyfmK6oMD[39m
+[90m16:22:10+13:00[39m [35m[plugins][39m [90m[hooks] running after_tool_call (1 handlers)[39m
+[90m16:22:10+13:00[39m [35m[plugins][39m [36mattest: receipt urn:receipt:578aaba3-e645-4ffd-ab23-4ef42f7b696e (unknown, medium) → chain chain_openclaw_agent:main:main_a4bdbf31-f926-4390-85de-b0c8fcbc0f0a seq 2[39m
+[90m16:22:10+13:00[39m [33m[agent/embedded][39m [90membedded run tool end: runId=c63f0305-f288-4a79-92eb-dfc33aca7be3 tool=attest_verify_chain toolCallId=toolu_01WdG4Lb62PBk4kdgg2Qd9Yc[39m
+[90m16:22:10+13:00[39m [35m[plugins][39m [90m[hooks] running after_tool_call (1 handlers)[39m
+[90m16:22:10+13:00[39m [35m[plugins][39m [36mattest: receipt urn:receipt:7865cd7d-749c-4560-aaaa-a16c028ac2b0 (unknown, medium) → chain chain_openclaw_agent:main:main_a4bdbf31-f926-4390-85de-b0c8fcbc0f0a seq 3[39m
+[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m[90m16:22:13+13:00[39m [36m[ws][39m [36m[96m→[39m[36m [1mevent[22m [1magent[22m [2mseq[22m=3 [2mclients[22m=1 [2mrun[22m=c63f0305…7be3 [2magent[22m=main [2msession[22m=main [2mstream[22m=assistant [2maseq[22m=9 [2mtext[22m=Here's the rundown: ### 📂 `/tmp` contents ``` attest-demo[39m
+[90m16:22:13+13:00[39m [36m[ws][39m [36m[96m→[39m[36m [1mevent[22m [1mchat[22m [2mseq[22m=4 [2mclients[22m=1 [2mdropIfSlow[22m=true[39m
+[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[90m16:22:13+13:00[39m [36m[ws][39m [36m[96m→[39m[36m [1mevent[22m [1magent[22m [2mseq[22m=5 [2mclients[22m=1 [2mrun[22m=c63f0305…7be3 [2magent[22m=main [2msession[22m=main [2mstream[22m=assistant [2maseq[22m=10 [2mtext[22m=Here's the rundown: ### 📂 `/tmp` contents ``` attest-demo com.apple.launchd.5ODVIrmU0h beacon-patch.py main_files.txt beacon-readme.md main_files2.txt[39m
+[90m16:22:13+13:00[39m [36m[ws][39m [36m[96m→[39m[36m [1mevent[22m [1mchat[22m [2mseq[22m=6 [2mclients[22m=1 [2mdropIfSlow[22m=true[39m
+[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[90m16:22:14+13:00[39m [36m[ws][39m [36m[96m→[39m[36m [1mevent[22m [1magent[22m [2mseq[22m=7 [2mclients[22m=1 [2mrun[22m=c63f0305…7be3 [2magent[22m=main [2msession[22m=main [2mstream[22m=assistant [2maseq[22m=11 [2mtext[22m=Here's the rundown: ### 📂 `/tmp` contents ``` attest-demo com.apple.launchd.5ODVIrmU0h beacon-patch.py main_files.txt beacon-readme.md main_files2.txt boost_i…[39m
+[90m16:22:14+13:00[39m [36m[ws][39m [36m[96m→[39m[36m [1mevent[22m [1mchat[22m [2mseq[22m=8 [2mclients[22m=1 [2mdropIfSlow[22m=true[39m
+[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[90m16:22:14+13:00[39m [36m[ws][39m [36m[96m→[39m[36m [1mevent[22m [1magent[22m [2mseq[22m=9 [2mclients[22m=1 [2mrun[22m=c63f0305…7be3 [2magent[22m=main [2msession[22m=main [2mstream[22m=assistant [2maseq[22m=12 [2mtext[22m=Here's the rundown: ### 📂 `/tmp` contents ``` attest-demo com.apple.launchd.5ODVIrmU0h beacon-patch.py main_files.txt beacon-readme.md main_files2.txt boost_i…[39m
+[90m16:22:14+13:00[39m [36m[ws][39m [36m[96m→[39m[36m [1mevent[22m [1mchat[22m [2mseq[22m=10 [2mclients[22m=1 [2mdropIfSlow[22m=true[39m
+[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[90m16:22:15+13:00[39m [36m[ws][39m [36m[96m→[39m[36m [1mevent[22m [1magent[22m [2mseq[22m=11 [2mclients[22m=1 [2mrun[22m=c63f0305…7be3 [2magent[22m=main [2msession[22m=main [2mstream[22m=assistant [2maseq[22m=13 [2mtext[22m=Here's the rundown: ### 📂 `/tmp` contents ``` attest-demo com.apple.launchd.5ODVIrmU0h beacon-patch.py main_files.txt beacon-readme.md main_files2.txt boost_i…[39m
+[90m16:22:15+13:00[39m [36m[ws][39m [36m[96m→[39m[36m [1mevent[22m [1mchat[22m [2mseq[22m=12 [2mclients[22m=1 [2mdropIfSlow[22m=true[39m
+[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m[90m16:22:15+13:00[39m [36m[ws][39m [36m[96m→[39m[36m [1mevent[22m [1magent[22m [2mseq[22m=13 [2mclients[22m=1 [2mrun[22m=c63f0305…7be3 [2magent[22m=main [2msession[22m=main [2mstream[22m=assistant [2maseq[22m=14 [2mtext[22m=Here's the rundown: ### 📂 `/tmp` contents ``` attest-demo com.apple.launchd.5ODVIrmU0h beacon-patch.py main_files.txt beacon-readme.md main_files2.txt boost_i…[39m
+[90m16:22:15+13:00[39m [36m[ws][39m [36m[96m→[39m[36m [1mevent[22m [1mchat[22m [2mseq[22m=14 [2mclients[22m=1 [2mdropIfSlow[22m=true[39m
+[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m[90m16:22:16+13:00[39m [36m[ws][39m [36m[96m→[39m[36m [1mevent[22m [1magent[22m [2mseq[22m=15 [2mclients[22m=1 [2mrun[22m=c63f0305…7be3 [2magent[22m=main [2msession[22m=main [2mstream[22m=assistant [2maseq[22m=15 [2mtext[22m=Here's the rundown: ### 📂 `/tmp` contents ``` attest-demo com.apple.launchd.5ODVIrmU0h beacon-patch.py main_files.txt beacon-readme.md main_files2.txt boost_i…[39m
+[90m16:22:16+13:00[39m [36m[ws][39m [36m[96m→[39m[36m [1mevent[22m [1mchat[22m [2mseq[22m=16 [2mclients[22m=1 [2mdropIfSlow[22m=true[39m
+[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[90m16:22:16+13:00[39m [36m[ws][39m [36m[96m→[39m[36m [1mevent[22m [1magent[22m [2mseq[22m=17 [2mclients[22m=1 [2mrun[22m=c63f0305…7be3 [2magent[22m=main [2msession[22m=main [2mstream[22m=assistant [2maseq[22m=16 [2mtext[22m=Here's the rundown: ### 📂 `/tmp` contents ``` attest-demo com.apple.launchd.5ODVIrmU0h beacon-patch.py main_files.txt beacon-readme.md main_files2.txt boost_i…[39m
+[90m16:22:16+13:00[39m [36m[ws][39m [36m[96m→[39m[36m [1mevent[22m [1mchat[22m [2mseq[22m=18 [2mclients[22m=1 [2mdropIfSlow[22m=true[39m
+[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m.[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[90m16:22:16+13:00[39m [36m[ws][39m [36m[96m→[39m[36m [1mevent[22m [1magent[22m [2mseq[22m=19 [2mclients[22m=1 [2mrun[22m=c63f0305…7be3 [2magent[22m=main [2msession[22m=main [2mstream[22m=assistant [2maseq[22m=17 [2mtext[22m=Here's the rundown: ### 📂 `/tmp` contents ``` attest-demo com.apple.launchd.5ODVIrmU0h beacon-patch.py main_files.txt beacon-readme.md main_files2.txt boost_i…[39m
+[90m16:22:16+13:00[39m [36m[ws][39m [36m[96m→[39m[36m [1mevent[22m [1mchat[22m [2mseq[22m=20 [2mclients[22m=1 [2mdropIfSlow[22m=true[39m
+[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m..[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[90m16:22:17+13:00[39m [36m[ws][39m [36m[96m→[39m[36m [1mevent[22m [1magent[22m [2mseq[22m=21 [2mclients[22m=1 [2mrun[22m=c63f0305…7be3 [2magent[22m=main [2msession[22m=main [2mstream[22m=assistant [2maseq[22m=18 [2mtext[22m=Here's the rundown: ### 📂 `/tmp` contents ``` attest-demo com.apple.launchd.5ODVIrmU0h beacon-patch.py main_files.txt beacon-readme.md main_files2.txt boost_i…[39m
+[90m16:22:17+13:00[39m [36m[ws][39m [36m[96m→[39m[36m [1mevent[22m [1mchat[22m [2mseq[22m=22 [2mclients[22m=1 [2mdropIfSlow[22m=true[39m
+[1G[J[35m◐[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◓[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[1G[J[35m◑[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[90m16:22:17+13:00[39m [36m[ws][39m [36m[96m→[39m[36m [1mevent[22m [1magent[22m [2mseq[22m=23 [2mclients[22m=1 [2mrun[22m=c63f0305…7be3 [2magent[22m=main [2msession[22m=main [2mstream[22m=assistant [2maseq[22m=19 [2mtext[22m=Here's the rundown: ### 📂 `/tmp` contents ``` attest-demo com.apple.launchd.5ODVIrmU0h beacon-patch.py main_files.txt beacon-readme.md main_files2.txt boost_i…[39m
+[90m16:22:17+13:00[39m [36m[ws][39m [36m[96m→[39m[36m [1mevent[22m [1mchat[22m [2mseq[22m=24 [2mclients[22m=1 [2mdropIfSlow[22m=true[39m
+[90m16:22:17+13:00[39m [33m[agent/embedded][39m [90membedded run agent end: runId=c63f0305-f288-4a79-92eb-dfc33aca7be3 isError=false[39m
+[90m16:22:17+13:00[39m [36m[ws][39m [36m[96m→[39m[36m [1mevent[22m [1magent[22m [2mseq[22m=25 [2mclients[22m=1 [2mrun[22m=c63f0305…7be3 [2magent[22m=main [2msession[22m=main [2mstream[22m=lifecycle [2maseq[22m=20 [2mphase[22m=end[39m
+[90m16:22:17+13:00[39m [36m[ws][39m [36m[96m→[39m[36m [1mevent[22m [1mchat[22m [2mseq[22m=26 [2mclients[22m=1[39m
+[1G[J[35m◒[39m  [38;2;255;90;45mWaiting for agent reply…[39m...[90m16:22:17+13:00[39m [33m[agent/embedded][39m [90membedded run prompt end: runId=c63f0305-f288-4a79-92eb-dfc33aca7be3 sessionId=a4bdbf31-f926-4390-85de-b0c8fcbc0f0a durationMs=11132[39m
+[90m16:22:17+13:00[39m [31m[diagnostic][39m [90msession state: sessionId=a4bdbf31-f926-4390-85de-b0c8fcbc0f0a sessionKey=agent:main:main prev=processing new=idle reason="run_completed" queueDepth=0[39m
+[90m16:22:17+13:00[39m [31m[diagnostic][39m [90mrun cleared: sessionId=a4bdbf31-f926-4390-85de-b0c8fcbc0f0a totalActive=0[39m
+[90m16:22:17+13:00[39m [33m[agent/embedded][39m [90membedded run done: runId=c63f0305-f288-4a79-92eb-dfc33aca7be3 sessionId=a4bdbf31-f926-4390-85de-b0c8fcbc0f0a durationMs=11364 aborted=false[39m
+[90m16:22:17+13:00[39m [31m[diagnostic][39m [90mlane task done: lane=main durationMs=11365 active=0 queued=0[39m
+[90m16:22:17+13:00[39m [31m[diagnostic][39m [90mlane task done: lane=session:agent:main:main durationMs=11365 active=0 queued=0[39m
+16:22:17+13:00 Here's the rundown:
+
+### 📂 `/tmp` contents
+```
+attest-demo          com.apple.launchd.5ODVIrmU0h
+beacon-patch.py      main_files.txt
+beacon-readme.md     main_files2.txt
+boost_interprocess   mcp-manual-test
+branch_files.txt     mcp-serial-test
+branch_files2.txt    openclaw
+claude-501           proxy-debug.db
+                     proxy-stderr.txt
+                     save_screenshot.js
+                     test-proxy.db
+```
+
+### 🔍 Audit Trail (Receipts)
+The trail is empty — **0 receipts** so far. This is a fresh session, so no actions have been recorded yet. (The receipts from the commands I just ran will start appearing going forward.)
+
+### ✅ Chain Integrity
+The chain **`chain_openclaw_agent:main:main_a4bdbf31-...`** is **valid** — 0 receipts, all signatures and hash links verified. Basically a clean slate with a verified empty chain.
+
+Want me to run the queries again after a few more actions so you can see receipts populate?
+[90m16:22:17+13:00[39m [36m[ws][39m [36m[93m⇄[39m[36m [1mres[22m [92m✓[39m[36m [1magent[22m [2mrunId[22m=c63f0305-f288-4a79-92eb-dfc33aca7be3 [2mid[22m=[90m73755ab2…0254[39m[36m[39m
+]9;4;0;0;Waiting for agent reply…\[1G[J[32m◇[39m  
+[?25h[2KHere's the rundown:
+
+### 📂 `/tmp` contents
+```
+attest-demo          com.apple.launchd.5ODVIrmU0h
+beacon-patch.py      main_files.txt
+beacon-readme.md     main_files2.txt
+boost_interprocess   mcp-manual-test
+branch_files.txt     mcp-serial-test
+branch_files2.txt    openclaw
+claude-501           proxy-debug.db
+                     proxy-stderr.txt
+                     save_screenshot.js
+                     test-proxy.db
+```
+
+### 🔍 Audit Trail (Receipts)
+The trail is empty — **0 receipts** so far. This is a fresh session, so no actions have been recorded yet. (The receipts from the commands I just ran will start appearing going forward.)
+
+### ✅ Chain Integrity
+The chain **`chain_openclaw_agent:main:main_a4bdbf31-...`** is **valid** — 0 receipts, all signatures and hash links verified. Basically a clean slate with a verified empty chain.
+
+Want me to run the queries again after a few more actions so you can see receipts populate?
+[90m16:22:17+13:00[39m [36m[ws][39m [36m[96m→[39m[36m [1mclose[22m [2mcode[22m=1005 [2mdurationMs[22m=13106 [2mhandshake[22m=connected [2mlastFrameType[22m=req [2mlastFrameMethod[22m=agent [2mlastFrameId[22m=73755ab2-a311-46af-8d06-bd393c810254[39m
+⠙[1G[0K
+=== 6. Shutting down gateway ===
+[90m16:22:17+13:00[39m [36m[gateway][39m [36msignal SIGTERM received[39m
+[90m16:22:17+13:00[39m [36m[gateway][39m [36mreceived SIGTERM; shutting down[39m
+[90m16:22:17+13:00[39m [36m[gateway][39m [36mattest: receipt store closed[39m
+[90m16:22:17+13:00[39m [34m[gmail-watcher][39m [36mgmail watcher stopped[39m
+[0m[?25h[?1000l[?1002l[?1003l[?1006l[?2004l⠙[1G[0K
+=== Done! Check ~/.openclaw-dev/attest/ for receipts.db ===
