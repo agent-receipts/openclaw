@@ -228,6 +228,28 @@ describe("loadCustomMappings", () => {
     const result = classify("browser_custom", merged.mappings, merged.patterns);
     expect(result.action_type).toBe("system.browser.navigate");
   });
+
+  it("works when custom file has only patterns (no mappings)", () => {
+    tempDir = join(tmpdir(), `attest-taxonomy-${randomUUID()}`);
+    mkdirSync(tempDir, { recursive: true });
+    const taxPath = join(tempDir, "taxonomy.json");
+
+    writeFileSync(taxPath, JSON.stringify({
+      patterns: [
+        { prefix: "custom_", action_type: "system.command.execute" },
+      ],
+    }));
+
+    const merged = loadCustomMappings(taxPath);
+
+    // Custom pattern works
+    const result = classify("custom_tool", merged.mappings, merged.patterns);
+    expect(result.action_type).toBe("system.command.execute");
+
+    // Default mappings still present
+    const defaultResult = classify("read_file", merged.mappings, merged.patterns);
+    expect(defaultResult.action_type).toBe("filesystem.file.read");
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -30,15 +30,16 @@ export const DEFAULT_PATTERNS: TaxonomyPattern[] = defaultTaxonomy.patterns;
  */
 export function loadCustomMappings(filePath: string): { mappings: TaxonomyMapping[]; patterns: TaxonomyPattern[] } {
   const raw = readFileSync(filePath, "utf-8");
-  const parsed = JSON.parse(raw) as { mappings: TaxonomyMapping[]; patterns?: TaxonomyPattern[] };
+  const parsed = JSON.parse(raw) as { mappings?: TaxonomyMapping[]; patterns?: TaxonomyPattern[] };
 
+  const customMappings = parsed.mappings ?? [];
   const customByName = new Map(
-    parsed.mappings.map((m) => [m.tool_name, m]),
+    customMappings.map((m) => [m.tool_name, m]),
   );
 
   // Merge mappings: custom overrides defaults
   const mappings = [
-    ...parsed.mappings,
+    ...customMappings,
     ...defaultTaxonomy.mappings.filter((m: TaxonomyMapping) => !customByName.has(m.tool_name)),
   ];
 
