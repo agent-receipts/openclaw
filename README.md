@@ -121,6 +121,15 @@ npx @attest-protocol/openclaw-attest verify
 
 # Verify a specific chain
 npx @attest-protocol/openclaw-attest verify --chain chain_openclaw_main_sid-42
+
+# Export a chain as JSON-LD (full W3C Verifiable Credentials)
+npx @attest-protocol/openclaw-attest export --chain chain_openclaw_main_sid-42
+
+# Export as a W3C Verifiable Presentation envelope
+npx @attest-protocol/openclaw-attest export --chain chain_openclaw_main_sid-42 --format presentation
+
+# Export a single receipt by ID
+npx @attest-protocol/openclaw-attest export --id urn:receipt:abc-123
 ```
 
 Run `npx @attest-protocol/openclaw-attest --help` for all options including `--status`, `--limit`, and `--db`.

@@ -9,6 +9,7 @@
  * Usage:
  *   openclaw-attest receipts [--risk <level>] [--action <type>] [--status <status>] [--limit <n>] [--db <path>] [--json]
  *   openclaw-attest verify [--chain <id>] [--db <path>] [--json]
+ *   openclaw-attest export [--chain <id>] [--id <receipt-id>] [--format receipt|presentation] [--db <path>]
  *   openclaw-attest --help
  *   openclaw-attest --version
  */
@@ -41,12 +42,20 @@ interface VerifyOptions {
   json: boolean;
 }
 
+interface ExportOptions {
+  chain?: string;
+  id?: string;
+  format: "receipt" | "presentation";
+  db: string;
+}
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
 const VALID_RISK_LEVELS = new Set<string>(["low", "medium", "high", "critical"]);
 const VALID_STATUSES = new Set<string>(["success", "failure", "pending"]);
+const VALID_FORMATS = new Set<string>(["receipt", "presentation"]);
 
 const DEFAULT_DB_PATH = "~/.openclaw/attest/receipts.db";
 const DEFAULT_LIMIT = 20;
@@ -91,6 +100,7 @@ export function helpText(): string {
 Usage:
   openclaw-attest receipts [options]   Query receipts from the audit trail
   openclaw-attest verify  [options]    Verify chain integrity
+  openclaw-attest export  [options]    Export receipts as JSON-LD
   openclaw-attest --help               Show this help
   openclaw-attest --version            Show version
 
@@ -105,7 +115,13 @@ receipts options:
 verify options:
   --chain <id>       Chain ID to verify (verifies all chains if omitted)
   --db <path>        Override database path
-  --json             Output as JSON`;
+  --json             Output as JSON
+
+export options:
+  --chain <id>       Export all receipts in a chain
+  --id <receipt-id>  Export a single receipt by ID
+  --format <fmt>     Output format: receipt (default) or presentation (W3C VP envelope)
+  --db <path>        Override database path`;
 }
 
 // ---------------------------------------------------------------------------
@@ -338,6 +354,47 @@ function runVerify(opts: VerifyOptions): void {
   }
 }
 
+export function wrapInPresentation(receipts: ActionReceipt[]): object {
+  return {
+    "@context": ["https://www.w3.org/ns/credentials/v2"],
+    type: "VerifiablePresentation",
+    verifiableCredential: receipts,
+  };
+}
+
+function runExport(opts: ExportOptions): void {
+  const dbPath = expandHome(opts.db);
+  let store: ReceiptStore | undefined;
+
+  try {
+    store = openStore(dbPath);
+    let receipts: ActionReceipt[];
+
+    if (opts.id) {
+      const receipt = store.getById(opts.id);
+      if (!receipt) {
+        throw new Error(`Receipt not found: "${opts.id}"`);
+      }
+      receipts = [receipt];
+    } else if (opts.chain) {
+      receipts = store.getChain(opts.chain);
+      if (receipts.length === 0) {
+        throw new Error(`No receipts found for chain: "${opts.chain}"`);
+      }
+    } else {
+      throw new Error("Export requires --chain <id> or --id <receipt-id>. Use --help for usage.");
+    }
+
+    const output = opts.format === "presentation"
+      ? wrapInPresentation(receipts)
+      : receipts.length === 1 ? receipts[0] : receipts;
+
+    process.stdout.write(JSON.stringify(output, null, 2) + "\n");
+  } finally {
+    store?.close();
+  }
+}
+
 /**
  * Attempt to load the public key from the keys.json file next to the DB.
  * Falls back to empty string if not found (signature checks will fail
@@ -360,7 +417,7 @@ function loadPublicKey(dbPath: string): string {
 // ---------------------------------------------------------------------------
 
 export interface ParsedArgs {
-  command: "receipts" | "verify" | "help" | "version";
+  command: "receipts" | "verify" | "export" | "help" | "version";
   risk?: string;
   action?: string;
   status?: string;
@@ -368,6 +425,8 @@ export interface ParsedArgs {
   db: string;
   json: boolean;
   chain?: string;
+  id?: string;
+  format: "receipt" | "presentation";
 }
 
 export function parseCliArgs(argv: string[]): ParsedArgs {
@@ -383,22 +442,26 @@ export function parseCliArgs(argv: string[]): ParsedArgs {
       db: { type: "string" },
       json: { type: "boolean", default: false },
       chain: { type: "string" },
+      id: { type: "string" },
+      format: { type: "string" },
     },
     allowPositionals: true,
     strict: true,
   });
 
+  const defaults = { limit: DEFAULT_LIMIT, db: DEFAULT_DB_PATH, json: false, format: "receipt" as const };
+
   if (values.help) {
-    return { command: "help", limit: DEFAULT_LIMIT, db: DEFAULT_DB_PATH, json: false };
+    return { command: "help", ...defaults };
   }
 
   if (values.version) {
-    return { command: "version", limit: DEFAULT_LIMIT, db: DEFAULT_DB_PATH, json: false };
+    return { command: "version", ...defaults };
   }
 
   const command = positionals[0] ?? "receipts";
 
-  if (command !== "receipts" && command !== "verify") {
+  if (command !== "receipts" && command !== "verify" && command !== "export") {
     throw new Error(`Unknown command: "${command}". Use --help for usage.`);
   }
 
@@ -421,8 +484,15 @@ export function parseCliArgs(argv: string[]): ParsedArgs {
     );
   }
 
+  const format = values.format ?? "receipt";
+  if (!VALID_FORMATS.has(format)) {
+    throw new Error(
+      `Invalid --format value: "${format}". Must be one of: receipt, presentation.`,
+    );
+  }
+
   return {
-    command: command as "receipts" | "verify",
+    command: command as "receipts" | "verify" | "export",
     risk,
     action: values.action,
     status,
@@ -430,6 +500,8 @@ export function parseCliArgs(argv: string[]): ParsedArgs {
     db: values.db ?? DEFAULT_DB_PATH,
     json: values.json ?? false,
     chain: values.chain,
+    id: values.id,
+    format: format as "receipt" | "presentation",
   };
 }
 
@@ -465,6 +537,15 @@ export function run(argv: string[]): void {
         chain: args.chain,
         db: args.db,
         json: args.json,
+      });
+      break;
+
+    case "export":
+      runExport({
+        chain: args.chain,
+        id: args.id,
+        format: args.format,
+        db: args.db,
       });
       break;
   }

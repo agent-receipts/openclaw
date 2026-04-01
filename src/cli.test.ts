@@ -4,6 +4,7 @@ import {
   helpText,
   formatReceiptsTable,
   formatVerifyResult,
+  wrapInPresentation,
   run,
 } from "./cli.js";
 
@@ -108,6 +109,36 @@ describe("parseCliArgs", () => {
     const args = parseCliArgs(["receipts"]);
     expect(args.db).toContain("receipts.db");
   });
+
+  it("parses export command with chain flag", () => {
+    const args = parseCliArgs(["export", "--chain", "chain_abc"]);
+    expect(args.command).toBe("export");
+    expect(args.chain).toBe("chain_abc");
+    expect(args.format).toBe("receipt");
+  });
+
+  it("parses export command with id flag", () => {
+    const args = parseCliArgs(["export", "--id", "urn:receipt:test-1"]);
+    expect(args.command).toBe("export");
+    expect(args.id).toBe("urn:receipt:test-1");
+  });
+
+  it("parses export command with presentation format", () => {
+    const args = parseCliArgs(["export", "--chain", "chain_abc", "--format", "presentation"]);
+    expect(args.command).toBe("export");
+    expect(args.format).toBe("presentation");
+  });
+
+  it("defaults format to receipt", () => {
+    const args = parseCliArgs(["export", "--chain", "c1"]);
+    expect(args.format).toBe("receipt");
+  });
+
+  it("throws on invalid --format value", () => {
+    expect(() => parseCliArgs(["export", "--format", "xml"])).toThrow(
+      'Invalid --format value: "xml"',
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -120,6 +151,7 @@ describe("helpText", () => {
     expect(text).toContain("openclaw-attest");
     expect(text).toContain("receipts");
     expect(text).toContain("verify");
+    expect(text).toContain("export");
     expect(text).toContain("--risk");
     expect(text).toContain("--action");
     expect(text).toContain("--status");
@@ -127,8 +159,55 @@ describe("helpText", () => {
     expect(text).toContain("--db");
     expect(text).toContain("--json");
     expect(text).toContain("--chain");
+    expect(text).toContain("--id");
+    expect(text).toContain("--format");
     expect(text).toContain("--help");
     expect(text).toContain("--version");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// wrapInPresentation
+// ---------------------------------------------------------------------------
+
+describe("wrapInPresentation", () => {
+  const receipt = {
+    "@context": ["https://www.w3.org/ns/credentials/v2", "https://attest.sh/v1"] as const,
+    id: "urn:receipt:test-1",
+    type: ["VerifiableCredential", "AIActionReceipt"] as const,
+    version: "0.1.0",
+    issuer: { id: "did:openclaw:agent" },
+    issuanceDate: "2025-01-01T00:00:00Z",
+    credentialSubject: {
+      principal: { id: "did:session:test" },
+      action: {
+        id: "act-1",
+        type: "filesystem.file.read",
+        risk_level: "low" as const,
+        target: { system: "openclaw", resource: "read_file" },
+        timestamp: "2025-01-01T00:00:00Z",
+      },
+      outcome: { status: "success" as const },
+      chain: { sequence: 1, previous_receipt_hash: null, chain_id: "chain_test" },
+    },
+    proof: { type: "Ed25519Signature2020", proofValue: "abc" },
+  };
+
+  it("wraps receipts in a W3C Verifiable Presentation", () => {
+    const vp = wrapInPresentation([receipt]) as Record<string, unknown>;
+    expect(vp["@context"]).toEqual(["https://www.w3.org/ns/credentials/v2"]);
+    expect(vp.type).toBe("VerifiablePresentation");
+    expect(vp.verifiableCredential).toEqual([receipt]);
+  });
+
+  it("wraps multiple receipts", () => {
+    const vp = wrapInPresentation([receipt, receipt]) as Record<string, unknown>;
+    expect((vp.verifiableCredential as unknown[]).length).toBe(2);
+  });
+
+  it("wraps empty array", () => {
+    const vp = wrapInPresentation([]) as Record<string, unknown>;
+    expect(vp.verifiableCredential).toEqual([]);
   });
 });
 
@@ -275,6 +354,7 @@ describe("run", () => {
     expect(stdoutData).toContain("openclaw-attest");
     expect(stdoutData).toContain("receipts");
     expect(stdoutData).toContain("verify");
+    expect(stdoutData).toContain("export");
   });
 
   it("outputs version with --version", () => {
