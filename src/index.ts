@@ -102,7 +102,6 @@ export default definePluginEntry({
     };
 
     // Register as factory functions (OpenClawPluginToolFactory pattern)
-    // so OpenClaw can resolve them with session context at runtime
     api.registerTool(createQueryReceiptsToolFactory(toolDeps), {
       name: "attest_query_receipts",
     });
