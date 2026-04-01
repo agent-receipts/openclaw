@@ -47,6 +47,61 @@ describe("classify", () => {
     expect(result.action_type).toBe("unknown");
     expect(result.risk_level).toBe("medium");
   });
+
+  // OpenClaw built-in tools (short names used by the openclaw runtime)
+  it("maps exec to system.command.execute with high risk", () => {
+    const result = classify("exec", DEFAULT_MAPPINGS);
+    expect(result.action_type).toBe("system.command.execute");
+    expect(result.risk_level).toBe("high");
+  });
+
+  it("maps read to filesystem.file.read with low risk", () => {
+    const result = classify("read", DEFAULT_MAPPINGS);
+    expect(result.action_type).toBe("filesystem.file.read");
+    expect(result.risk_level).toBe("low");
+  });
+
+  it("maps write to filesystem.file.create with low risk", () => {
+    const result = classify("write", DEFAULT_MAPPINGS);
+    expect(result.action_type).toBe("filesystem.file.create");
+    expect(result.risk_level).toBe("low");
+  });
+
+  it("maps edit to filesystem.file.modify with medium risk", () => {
+    const result = classify("edit", DEFAULT_MAPPINGS);
+    expect(result.action_type).toBe("filesystem.file.modify");
+    expect(result.risk_level).toBe("medium");
+  });
+
+  it("maps apply_patch to filesystem.file.modify with medium risk", () => {
+    const result = classify("apply_patch", DEFAULT_MAPPINGS);
+    expect(result.action_type).toBe("filesystem.file.modify");
+    expect(result.risk_level).toBe("medium");
+  });
+
+  it("maps web_fetch to system.browser.navigate with low risk", () => {
+    const result = classify("web_fetch", DEFAULT_MAPPINGS);
+    expect(result.action_type).toBe("system.browser.navigate");
+    expect(result.risk_level).toBe("low");
+  });
+
+  it("maps web_search to system.browser.navigate with low risk", () => {
+    const result = classify("web_search", DEFAULT_MAPPINGS);
+    expect(result.action_type).toBe("system.browser.navigate");
+    expect(result.risk_level).toBe("low");
+  });
+
+  it("maps sessions_spawn to system.application.launch with low risk", () => {
+    const result = classify("sessions_spawn", DEFAULT_MAPPINGS);
+    expect(result.action_type).toBe("system.application.launch");
+    expect(result.risk_level).toBe("low");
+  });
+
+  it("maps process to system.command.execute with high risk", () => {
+    const result = classify("process", DEFAULT_MAPPINGS);
+    expect(result.action_type).toBe("system.command.execute");
+    expect(result.risk_level).toBe("high");
+  });
 });
 
 describe("loadCustomMappings", () => {

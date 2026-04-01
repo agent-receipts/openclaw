@@ -1,24 +1,62 @@
 {
   "mappings": [
-    { "tool_name": "read_file", "action_type": "filesystem.file.read" },
-    { "tool_name": "write_file", "action_type": "filesystem.file.create" },
-    { "tool_name": "edit_file", "action_type": "filesystem.file.modify" },
-    { "tool_name": "delete_file", "action_type": "filesystem.file.delete" },
-    { "tool_name": "move_file", "action_type": "filesystem.file.move" },
-    { "tool_name": "list_directory", "action_type": "filesystem.file.read" },
-    { "tool_name": "create_directory", "action_type": "filesystem.directory.create" },
-    { "tool_name": "run_command", "action_type": "system.command.execute" },
-    { "tool_name": "execute_command", "action_type": "system.command.execute" },
-    { "tool_name": "shell", "action_type": "system.command.execute" },
-    { "tool_name": "browser_navigate", "action_type": "system.browser.navigate" },
-    { "tool_name": "browser_click", "action_type": "system.browser.form_submit" },
-    { "tool_name": "browser_type", "action_type": "system.browser.form_submit" },
-    { "tool_name": "browser_screenshot", "action_type": "system.browser.navigate" },
-    { "tool_name": "send_message", "action_type": "system.application.control" },
-    { "tool_name": "memory_store", "action_type": "filesystem.file.create" },
-    { "tool_name": "memory_recall", "action_type": "filesystem.file.read" },
-    { "tool_name": "web_search", "action_type": "system.browser.navigate" },
-    { "tool_name": "launch_app", "action_type": "system.application.launch" },
-    { "tool_name": "settings_modify", "action_type": "system.settings.modify" }
+    { "tool_name": "read_file",         "action_type": "filesystem.file.read" },
+    { "tool_name": "write_file",        "action_type": "filesystem.file.create" },
+    { "tool_name": "edit_file",         "action_type": "filesystem.file.modify" },
+    { "tool_name": "delete_file",       "action_type": "filesystem.file.delete" },
+    { "tool_name": "move_file",         "action_type": "filesystem.file.move" },
+    { "tool_name": "list_directory",    "action_type": "filesystem.file.read" },
+    { "tool_name": "create_directory",  "action_type": "filesystem.directory.create" },
+    { "tool_name": "run_command",       "action_type": "system.command.execute" },
+    { "tool_name": "execute_command",   "action_type": "system.command.execute" },
+    { "tool_name": "shell",             "action_type": "system.command.execute" },
+    { "tool_name": "bash",              "action_type": "system.command.execute" },
+    { "tool_name": "browser_navigate",  "action_type": "system.browser.navigate" },
+    { "tool_name": "browser_click",     "action_type": "system.browser.form_submit" },
+    { "tool_name": "browser_type",      "action_type": "system.browser.form_submit" },
+    { "tool_name": "browser_screenshot","action_type": "system.browser.navigate" },
+    { "tool_name": "send_message",      "action_type": "system.application.control" },
+    { "tool_name": "memory_store",      "action_type": "filesystem.file.create" },
+    { "tool_name": "memory_recall",     "action_type": "filesystem.file.read" },
+    { "tool_name": "web_search",        "action_type": "system.browser.navigate" },
+    { "tool_name": "launch_app",        "action_type": "system.application.launch" },
+    { "tool_name": "settings_modify",   "action_type": "system.settings.modify" },
+
+    { "tool_name": "read",              "action_type": "filesystem.file.read" },
+    { "tool_name": "write",             "action_type": "filesystem.file.create" },
+    { "tool_name": "edit",              "action_type": "filesystem.file.modify" },
+    { "tool_name": "apply_patch",       "action_type": "filesystem.file.modify" },
+
+    { "tool_name": "exec",              "action_type": "system.command.execute" },
+    { "tool_name": "process",           "action_type": "system.command.execute" },
+    { "tool_name": "code_execution",    "action_type": "system.command.execute" },
+
+    { "tool_name": "web_fetch",         "action_type": "system.browser.navigate" },
+    { "tool_name": "x_search",          "action_type": "system.browser.navigate" },
+
+    { "tool_name": "memory_search",     "action_type": "filesystem.file.read" },
+    { "tool_name": "memory_get",        "action_type": "filesystem.file.read" },
+
+    { "tool_name": "sessions_list",     "action_type": "filesystem.file.read" },
+    { "tool_name": "sessions_history",  "action_type": "filesystem.file.read" },
+    { "tool_name": "session_status",    "action_type": "filesystem.file.read" },
+    { "tool_name": "sessions_send",     "action_type": "system.application.control" },
+    { "tool_name": "sessions_spawn",    "action_type": "system.application.launch" },
+    { "tool_name": "sessions_yield",    "action_type": "system.application.control" },
+    { "tool_name": "subagents",         "action_type": "system.application.launch" },
+    { "tool_name": "agents_list",       "action_type": "filesystem.file.read" },
+
+    { "tool_name": "browser",           "action_type": "system.browser.navigate" },
+    { "tool_name": "canvas",            "action_type": "system.application.control" },
+
+    { "tool_name": "message",           "action_type": "system.application.control" },
+
+    { "tool_name": "cron",              "action_type": "system.settings.modify" },
+    { "tool_name": "gateway",           "action_type": "system.settings.modify" },
+    { "tool_name": "nodes",             "action_type": "system.application.control" },
+
+    { "tool_name": "image",             "action_type": "filesystem.file.read" },
+    { "tool_name": "image_generate",    "action_type": "filesystem.file.create" },
+    { "tool_name": "tts",               "action_type": "system.application.control" }
   ]
 }
