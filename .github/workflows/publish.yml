@@ -22,6 +22,8 @@ jobs:
         with:
           node-version: "22"
 
+      - run: npm install -g npm@latest
+
       - run: corepack enable && corepack prepare pnpm@10.33.0 --activate
 
       - uses: actions/setup-node@v4
@@ -48,4 +50,6 @@ jobs:
       - run: pnpm run build
 
       - name: Publish to npm
-        run: npm publish --access public --provenance
+        run: |
+          npm config delete //registry.npmjs.org/:_authToken
+          npm publish --access public --provenance
