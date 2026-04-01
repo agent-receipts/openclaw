@@ -1,42 +1,84 @@
 import { readFileSync } from "node:fs";
 import {
   classifyToolCall,
+  resolveActionType,
   type ClassificationResult,
   type TaxonomyMapping,
 } from "@attest-protocol/attest-ts/taxonomy";
 
 // Default mappings bundled with the plugin
-import defaultMappings from "../taxonomy.json" with { type: "json" };
+import defaultTaxonomy from "../taxonomy.json" with { type: "json" };
 
 export { type TaxonomyMapping } from "@attest-protocol/attest-ts/taxonomy";
 
+export interface TaxonomyPattern {
+  prefix: string;
+  action_type: string;
+}
+
 /** The bundled default mappings, exported for use when no custom taxonomy is configured. */
-export const DEFAULT_MAPPINGS: TaxonomyMapping[] = defaultMappings.mappings;
+export const DEFAULT_MAPPINGS: TaxonomyMapping[] = defaultTaxonomy.mappings;
+
+/** The bundled default patterns, exported for use when no custom taxonomy is configured. */
+export const DEFAULT_PATTERNS: TaxonomyPattern[] = defaultTaxonomy.patterns;
 
 /**
- * Load custom taxonomy mappings from a JSON file, merging with defaults.
- * Custom mappings take precedence (matched by tool_name).
+ * Load custom taxonomy mappings and patterns from a JSON file, merging with defaults.
+ * Custom entries take precedence (matched by tool_name for mappings, by prefix for patterns).
  *
- * Pure function — returns the merged mappings without side effects.
+ * Pure function — returns the merged result without side effects.
  */
-export function loadCustomMappings(filePath: string): TaxonomyMapping[] {
+export function loadCustomMappings(filePath: string): { mappings: TaxonomyMapping[]; patterns: TaxonomyPattern[] } {
   const raw = readFileSync(filePath, "utf-8");
-  const parsed = JSON.parse(raw) as { mappings: TaxonomyMapping[] };
+  const parsed = JSON.parse(raw) as { mappings?: TaxonomyMapping[]; patterns?: TaxonomyPattern[] };
 
+  const customMappings = parsed.mappings ?? [];
   const customByName = new Map(
-    parsed.mappings.map((m) => [m.tool_name, m]),
+    customMappings.map((m) => [m.tool_name, m]),
   );
 
-  // Merge: custom overrides defaults
-  return [
-    ...parsed.mappings,
-    ...defaultMappings.mappings.filter((m: TaxonomyMapping) => !customByName.has(m.tool_name)),
+  // Merge mappings: custom overrides defaults
+  const mappings = [
+    ...customMappings,
+    ...defaultTaxonomy.mappings.filter((m: TaxonomyMapping) => !customByName.has(m.tool_name)),
   ];
+
+  // Merge patterns: custom overrides defaults by prefix
+  const customPatterns = parsed.patterns ?? [];
+  const customPrefixes = new Set(customPatterns.map((p) => p.prefix));
+  const patterns = [
+    ...customPatterns,
+    ...defaultTaxonomy.patterns.filter((p: TaxonomyPattern) => !customPrefixes.has(p.prefix)),
+  ];
+
+  return { mappings, patterns };
 }
 
 /**
  * Classify an OpenClaw tool call into an attest-ts action type and risk level.
+ *
+ * Lookup order: exact match → prefix pattern → unknown.
  */
-export function classify(toolName: string, mappings: TaxonomyMapping[]): ClassificationResult {
-  return classifyToolCall(toolName, mappings);
+export function classify(
+  toolName: string,
+  mappings: TaxonomyMapping[],
+  patterns: TaxonomyPattern[] = [],
+): ClassificationResult {
+  // 1. Try exact match
+  const exact = classifyToolCall(toolName, mappings);
+  if (exact.action_type !== "unknown") return exact;
+
+  // 2. Try prefix patterns (first match wins, order matters)
+  for (const p of patterns) {
+    if (toolName.startsWith(p.prefix)) {
+      const entry = resolveActionType(p.action_type);
+      return {
+        action_type: entry.type,
+        risk_level: entry.risk_level,
+      };
+    }
+  }
+
+  // 3. Fall back to unknown
+  return exact;
 }

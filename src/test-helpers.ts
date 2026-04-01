@@ -9,7 +9,7 @@ import {
 } from "@attest-protocol/attest-ts";
 import { beforeToolCall, afterToolCall, type HookDeps, type PendingMap } from "./hooks.js";
 import { type ChainsMap, type ChainState } from "./chain.js";
-import { DEFAULT_MAPPINGS } from "./classify.js";
+import { DEFAULT_MAPPINGS, DEFAULT_PATTERNS } from "./classify.js";
 
 /**
  * Create HookDeps with generated keys, in-memory store, and isolated state.
@@ -37,6 +37,7 @@ export function makeHookDeps(store?: ReceiptStore): HookDeps & {
     chains,
     pending,
     mappings: DEFAULT_MAPPINGS,
+    patterns: DEFAULT_PATTERNS,
   };
 }
 

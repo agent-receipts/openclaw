@@ -58,5 +58,14 @@
     { "tool_name": "image",             "action_type": "filesystem.file.read" },
     { "tool_name": "image_generate",    "action_type": "filesystem.file.create" },
     { "tool_name": "tts",               "action_type": "system.application.control" }
+  ],
+  "patterns": [
+    { "prefix": "browser_",  "action_type": "system.browser.navigate" },
+    { "prefix": "fs_",       "action_type": "filesystem.file.read" },
+    { "prefix": "file_",     "action_type": "filesystem.file.read" },
+    { "prefix": "db_",       "action_type": "system.command.execute" },
+    { "prefix": "memory_",   "action_type": "filesystem.file.read" },
+    { "prefix": "sessions_", "action_type": "system.application.control" },
+    { "prefix": "session_",  "action_type": "system.application.control" }
   ]
 }

@@ -12,7 +12,7 @@ import { definePluginEntry } from "./openclaw-types.js";
 import { openStore } from "@attest-protocol/attest-ts";
 
 import { resolveConfig, loadOrCreateKeys } from "./config.js";
-import { loadCustomMappings, DEFAULT_MAPPINGS } from "./classify.js";
+import { loadCustomMappings, DEFAULT_MAPPINGS, DEFAULT_PATTERNS } from "./classify.js";
 import { beforeToolCall, afterToolCall, type HookDeps, type PendingMap } from "./hooks.js";
 import { resetChain, getChainId, type ChainsMap, type ChainState } from "./chain.js";
 import { createQueryReceiptsToolFactory, createVerifyChainToolFactory } from "./tools.js";
@@ -33,11 +33,13 @@ export default definePluginEntry({
     // All mutable state lives here, scoped to this plugin instance
     const chains: ChainsMap = new Map<string, ChainState>();
     const pending: PendingMap = new Map();
-    const mappings = cfg.taxonomyPath
-      ? loadCustomMappings(cfg.taxonomyPath)
-      : DEFAULT_MAPPINGS;
+    let mappings = DEFAULT_MAPPINGS;
+    let patterns = DEFAULT_PATTERNS;
 
     if (cfg.taxonomyPath) {
+      const custom = loadCustomMappings(cfg.taxonomyPath);
+      mappings = custom.mappings;
+      patterns = custom.patterns;
       api.logger.info(`attest: loaded custom taxonomy from ${cfg.taxonomyPath}`);
     }
 
@@ -61,6 +63,7 @@ export default definePluginEntry({
       pending,
       chains,
       mappings,
+      patterns,
     };
 
     // --- Hooks ---

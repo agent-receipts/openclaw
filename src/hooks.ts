@@ -18,7 +18,7 @@ import {
 } from "@attest-protocol/attest-ts";
 import type { TaxonomyMapping } from "@attest-protocol/attest-ts/taxonomy";
 
-import { classify } from "./classify.js";
+import { classify, type TaxonomyPattern } from "./classify.js";
 import { type ChainsMap, getChainState, advanceChain } from "./chain.js";
 
 export type PendingCall = {
@@ -46,6 +46,7 @@ export type HookDeps = {
   pending: PendingMap;
   chains: ChainsMap;
   mappings: TaxonomyMapping[];
+  patterns: TaxonomyPattern[];
 };
 
 /**
@@ -117,7 +118,7 @@ export async function afterToolCall(
   const sessionId = ctx.sessionId;
 
   // Classify the tool call
-  const classification = classify(event.toolName, deps.mappings);
+  const classification = classify(event.toolName, deps.mappings, deps.patterns);
 
   // Get chain state and advance sequence
   const chain = getChainState(deps.chains, sessionKey, sessionId);
