@@ -21,6 +21,42 @@ Built on [`@attest-protocol/attest-ts`](https://github.com/attest-protocol/attes
 
 ---
 
+## What it looks like
+
+After a session where the agent reads files, runs a command, browses a page, and writes output, querying the audit trail returns:
+
+```json
+{
+  "total_receipts": 5,
+  "total_chains": 1,
+  "by_risk": { "low": 4, "high": 1 },
+  "by_status": { "success": 4, "failure": 1 },
+  "by_action": {
+    "filesystem.file.read": 2,
+    "filesystem.file.create": 1,
+    "system.command.execute": 1,
+    "system.browser.navigate": 1
+  },
+  "results": [
+    { "id": "rec-…01", "timestamp": "2026-04-01T02:10:01Z", "action": "filesystem.file.read",    "risk": "low",  "target": "read_file",        "status": "success", "sequence": 1 },
+    { "id": "rec-…02", "timestamp": "2026-04-01T02:10:02Z", "action": "filesystem.file.read",    "risk": "low",  "target": "read_file",        "status": "failure", "sequence": 2 },
+    { "id": "rec-…03", "timestamp": "2026-04-01T02:10:03Z", "action": "system.command.execute",  "risk": "high", "target": "run_command",      "status": "success", "sequence": 3 },
+    { "id": "rec-…04", "timestamp": "2026-04-01T02:10:04Z", "action": "system.browser.navigate", "risk": "low",  "target": "browser_navigate", "status": "success", "sequence": 4 },
+    { "id": "rec-…05", "timestamp": "2026-04-01T02:10:05Z", "action": "filesystem.file.create",  "risk": "low",  "target": "write_file",       "status": "success", "sequence": 5 }
+  ]
+}
+```
+
+Verifying the chain confirms nothing was tampered with:
+
+```
+Chain "chain_openclaw_main_sid-42" is valid: 5 receipts, all signatures and hash links verified.
+```
+
+Every receipt is a signed [W3C Verifiable Credential](https://www.w3.org/TR/vc-data-model-2.0/) — parameters are hashed (never stored in plaintext), and each receipt is hash-linked to the previous one, forming a tamper-evident chain.
+
+---
+
 ## Why receipts?
 
 AI agents that read files, run commands, and browse the web are powerful — but that power needs accountability. When an agent operates autonomously, you need to know exactly what it did, prove that the record hasn't been tampered with, and keep sensitive details private.
@@ -60,12 +96,11 @@ OpenClaw Gateway
 
 ## Install
 
-```sh
-npm install @attest-protocol/openclaw-attest
-# or: pnpm add @attest-protocol/openclaw-attest
+```bash
+openclaw plugins install @attest-protocol/openclaw-attest
 ```
 
-Then enable the plugin in your OpenClaw config.
+Then enable the plugin in your OpenClaw config. See [`docs/INSTALL.md`](docs/INSTALL.md) for tool visibility setup and configuration options.
 
 ## Agent tools
 
