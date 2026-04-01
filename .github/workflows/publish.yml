@@ -28,7 +28,6 @@ jobs:
         with:
           node-version: "22"
           cache: "pnpm"
-          registry-url: "https://registry.npmjs.org"
 
       - run: pnpm install --frozen-lockfile
 
@@ -48,4 +47,6 @@ jobs:
       - run: pnpm run build
 
       - name: Publish to npm
-        run: npm publish --access public --provenance
+        run: |
+          npm config set registry https://registry.npmjs.org/
+          npm publish --access public --provenance
