@@ -59,8 +59,9 @@ function createMockApi(config?: Record<string, unknown>): {
       const name = opts?.name ?? resolved.name;
       tools.set(name, { definition: resolved, factory: isFactory ? tool : undefined, opts });
     },
-    registerService: (service: { id: string; start?: () => Promise<void> | void; stop?: () => Promise<void> | void }) => {
+    registerService: (service: { id: string; start: () => Promise<void> | void; stop?: () => Promise<void> | void }) => {
       services.push(service);
+      service.start?.();
     },
   };
 

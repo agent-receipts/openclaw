@@ -160,7 +160,7 @@ export function createVerifyChainToolFactory(deps: ToolDeps) {
   });
 }
 
-// --- Legacy direct-tool creators (used by integration tests) ---
+// --- Legacy direct-tool creators (used by tests) ---
 
 /**
  * Create the attest_query_receipts tool definition (non-factory).

@@ -73,4 +73,4 @@ kill $GATEWAY_PID 2>/dev/null || true
 wait $GATEWAY_PID 2>/dev/null || true
 
 echo ""
-echo "=== Done! Check ~/.openclaw-dev/attest/ for receipts.db ==="
+echo "=== Done! Check ~/.openclaw/attest/ for receipts.db ==="
