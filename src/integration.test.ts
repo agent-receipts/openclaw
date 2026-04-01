@@ -23,6 +23,7 @@ type CapturedHook = {
 
 type CapturedTool = {
   definition: any;
+  factory?: (ctx: any) => any;
   opts?: { name?: string };
 };
 
@@ -30,12 +31,12 @@ function createMockApi(config?: Record<string, unknown>): {
   api: OpenClawPluginApi;
   hooks: Map<string, CapturedHook[]>;
   tools: Map<string, CapturedTool>;
-  services: { name: string; stop?: () => Promise<void> | void }[];
+  services: { id: string; start?: () => Promise<void> | void; stop?: () => Promise<void> | void }[];
   logs: string[];
 } {
   const hooks = new Map<string, CapturedHook[]>();
   const tools = new Map<string, CapturedTool>();
-  const services: { id: string; stop?: () => Promise<void> | void }[] = [];
+  const services: { id: string; start?: () => Promise<void> | void; stop?: () => Promise<void> | void }[] = [];
   const logs: string[] = [];
 
   const api: OpenClawPluginApi = {
@@ -50,11 +51,17 @@ function createMockApi(config?: Record<string, unknown>): {
       hooks.get(hookName)!.push({ handler, opts });
     },
     registerTool: (tool: any, opts?: { name?: string }) => {
-      const name = opts?.name ?? tool.name;
-      tools.set(name, { definition: tool, opts });
+      // If tool is a factory function (OpenClaw pattern), call it with mock context
+      const isFactory = typeof tool === "function";
+      const resolved = isFactory
+        ? tool({ sessionKey: "test", sessionId: "sid-mock" })
+        : tool;
+      const name = opts?.name ?? resolved.name;
+      tools.set(name, { definition: resolved, factory: isFactory ? tool : undefined, opts });
     },
-    registerService: (service: { id: string; stop?: () => Promise<void> | void }) => {
+    registerService: (service: { id: string; start: () => Promise<void> | void; stop?: () => Promise<void> | void }) => {
       services.push(service);
+      service.start?.();
     },
   };
 
@@ -179,9 +186,10 @@ describe("integration: full plugin lifecycle", () => {
     expect(queryData.results[1].sequence).toBe(2);
     expect(queryData.results[2].sequence).toBe(3);
 
-    // 4. Verify chain integrity via the registered tool
-    const verifyTool = tools.get("attest_verify_chain")!.definition;
-    const verifyResult = await verifyTool.execute("tc-verify", {}, sessionCtx);
+    // 4. Verify chain integrity via the registered tool (resolve factory with session context)
+    const verifyFactory = tools.get("attest_verify_chain")!.factory!;
+    const verifyTool = verifyFactory(sessionCtx);
+    const verifyResult = await verifyTool.execute("tc-verify", {});
 
     expect(verifyResult.content[0].text).toContain("is valid");
     expect(verifyResult.content[0].text).toContain("3 receipts");
@@ -220,15 +228,15 @@ describe("integration: full plugin lifecycle", () => {
     await fireHook(hooks, "before_tool_call", event, session2);
     await fireHook(hooks, "after_tool_call", { ...event, result: { ok: true } }, session2);
 
-    // Verify both chains independently
-    const verifyTool = tools.get("attest_verify_chain")!.definition;
+    // Verify both chains independently (resolve factory per session)
+    const verifyFactory = tools.get("attest_verify_chain")!.factory!;
 
-    const r1 = await verifyTool.execute("v1", {}, session1);
+    const r1 = await verifyFactory(session1).execute("v1", {});
     const d1 = JSON.parse(r1.content[1].text);
     expect(d1.valid).toBe(true);
     expect(d1.length).toBe(2);
 
-    const r2 = await verifyTool.execute("v2", {}, session2);
+    const r2 = await verifyFactory(session2).execute("v2", {});
     const d2 = JSON.parse(r2.content[1].text);
     expect(d2.valid).toBe(true);
     expect(d2.length).toBe(1);

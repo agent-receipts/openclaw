@@ -15,7 +15,7 @@ import { resolveConfig, loadOrCreateKeys } from "./config.js";
 import { loadCustomMappings, DEFAULT_MAPPINGS } from "./classify.js";
 import { beforeToolCall, afterToolCall, type HookDeps, type PendingMap } from "./hooks.js";
 import { resetChain, getChainId, type ChainsMap, type ChainState } from "./chain.js";
-import { createQueryReceiptsTool, createVerifyChainTool } from "./tools.js";
+import { createQueryReceiptsToolFactory, createVerifyChainToolFactory } from "./tools.js";
 
 export default definePluginEntry({
   id: "openclaw-attest",
@@ -101,11 +101,12 @@ export default definePluginEntry({
         getChainId(chains, sessionKey, sessionId),
     };
 
-    api.registerTool(createQueryReceiptsTool(toolDeps), {
+    // Register as factory functions (OpenClawPluginToolFactory pattern)
+    api.registerTool(createQueryReceiptsToolFactory(toolDeps), {
       name: "attest_query_receipts",
     });
 
-    api.registerTool(createVerifyChainTool(toolDeps), {
+    api.registerTool(createVerifyChainToolFactory(toolDeps), {
       name: "attest_verify_chain",
     });
 
@@ -113,6 +114,9 @@ export default definePluginEntry({
 
     api.registerService({
       id: "attest-store",
+      async start() {
+        // Store is already opened during register — nothing to do
+      },
       async stop() {
         store.close();
         api.logger.info("attest: receipt store closed");

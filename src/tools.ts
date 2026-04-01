@@ -1,5 +1,8 @@
 /**
  * Agent-facing tools that let the AI introspect its own audit trail.
+ *
+ * Tools are registered as factory functions (OpenClawPluginToolFactory pattern)
+ * so they receive session context at runtime and match the AgentTool interface.
  */
 
 import { Type } from "@sinclair/typebox";
@@ -9,17 +12,28 @@ import { verifyStoredChain } from "@attest-protocol/attest-ts";
 const VALID_RISK_LEVELS = new Set<string>(["low", "medium", "high", "critical"]);
 const VALID_STATUSES = new Set<string>(["success", "failure", "pending"]);
 
-type ToolDeps = {
+export type ToolDeps = {
   store: ReceiptStore;
   publicKey: string;
   getChainId: (sessionKey: string, sessionId?: string) => string;
 };
 
 /**
- * Create the attest_query_receipts tool definition.
+ * Context passed by OpenClaw to tool factories at runtime.
+ * Mirrors the subset of OpenClawPluginToolContext we use.
  */
-export function createQueryReceiptsTool(deps: ToolDeps) {
-  return {
+type ToolFactoryContext = {
+  sessionKey?: string;
+  sessionId?: string;
+  [key: string]: unknown;
+};
+
+/**
+ * Create a factory function for the attest_query_receipts tool.
+ * The factory is called by OpenClaw at runtime with session context.
+ */
+export function createQueryReceiptsToolFactory(deps: ToolDeps) {
+  return (_ctx: ToolFactoryContext) => ({
     name: "attest_query_receipts",
     label: "Query Attestation Receipts",
     description:
@@ -82,17 +96,19 @@ export function createQueryReceiptsTool(deps: ToolDeps) {
       };
 
       return {
-        content: [{ type: "text", text: JSON.stringify(summary, null, 2) }],
+        content: [{ type: "text" as const, text: JSON.stringify(summary, null, 2) }],
+        details: summary,
       };
     },
-  };
+  });
 }
 
 /**
- * Create the attest_verify_chain tool definition.
+ * Create a factory function for the attest_verify_chain tool.
+ * The factory captures session context from OpenClaw at runtime.
  */
-export function createVerifyChainTool(deps: ToolDeps) {
-  return {
+export function createVerifyChainToolFactory(deps: ToolDeps) {
+  return (ctx: ToolFactoryContext) => ({
     name: "attest_verify_chain",
     label: "Verify Attestation Chain",
     description:
@@ -108,11 +124,10 @@ export function createVerifyChainTool(deps: ToolDeps) {
     async execute(
       _toolCallId: string,
       params: { chain_id?: string },
-      ctx?: { sessionKey?: string; sessionId?: string },
     ) {
       const chainId =
         params.chain_id ??
-        deps.getChainId(ctx?.sessionKey ?? "default", ctx?.sessionId);
+        deps.getChainId(ctx.sessionKey ?? "default", ctx.sessionId);
 
       const verification = verifyStoredChain(deps.store, chainId, deps.publicKey);
 
@@ -130,17 +145,35 @@ export function createVerifyChainTool(deps: ToolDeps) {
         })),
       };
 
+      const text = verification.valid
+        ? `Chain "${chainId}" is valid: ${verification.length} receipts, all signatures and hash links verified.`
+        : `Chain "${chainId}" is BROKEN at position ${verification.brokenAt}: tamper detected.`;
+
       return {
         content: [
-          {
-            type: "text",
-            text: verification.valid
-              ? `Chain "${chainId}" is valid: ${verification.length} receipts, all signatures and hash links verified.`
-              : `Chain "${chainId}" is BROKEN at position ${verification.brokenAt}: tamper detected.`,
-          },
-          { type: "text", text: JSON.stringify(result, null, 2) },
+          { type: "text" as const, text },
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
         ],
+        details: result,
       };
     },
-  };
+  });
+}
+
+// --- Legacy direct-tool creators (used by tests) ---
+
+/**
+ * Create the attest_query_receipts tool definition (non-factory).
+ * @deprecated Use createQueryReceiptsToolFactory for OpenClaw integration.
+ */
+export function createQueryReceiptsTool(deps: ToolDeps) {
+  return createQueryReceiptsToolFactory(deps)({});
+}
+
+/**
+ * Create the attest_verify_chain tool definition (non-factory).
+ * @deprecated Use createVerifyChainToolFactory for OpenClaw integration.
+ */
+export function createVerifyChainTool(deps: ToolDeps) {
+  return createVerifyChainToolFactory(deps)({});
 }

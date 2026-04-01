@@ -18,7 +18,7 @@ export type OpenClawPluginApi = {
   logger: PluginLogger;
   on: (hookName: string, handler: (...args: any[]) => any, opts?: { priority?: number }) => void;
   registerTool: (tool: any, opts?: { name?: string }) => void;
-  registerService: (service: { id: string; stop?: () => Promise<void> | void }) => void;
+  registerService: (service: { id: string; start: () => Promise<void> | void; stop?: () => Promise<void> | void }) => void;
 };
 
 type DefinePluginEntryOptions = {

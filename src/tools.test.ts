@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { openStore, type ReceiptStore } from "@attest-protocol/attest-ts";
-import { createQueryReceiptsTool, createVerifyChainTool } from "./tools.js";
+import { createQueryReceiptsTool, createVerifyChainTool, createVerifyChainToolFactory } from "./tools.js";
 import { makeHookDeps, simulateToolCall } from "./test-helpers.js";
 import { getChainId } from "./chain.js";
 
@@ -158,14 +158,17 @@ describe("attest_verify_chain", () => {
     expect(data.length).toBe(3);
   });
 
-  it("defaults to current session chain ID", async () => {
+  it("defaults to current session chain ID via factory context", async () => {
     await simulateToolCall(deps, "read_file", { path: "/a.txt" });
 
-    // Pass ctx with sessionKey/sessionId matching what simulateToolCall uses
-    const result = await tool.execute("tc-v", {}, {
-      sessionKey: "test-session",
-      sessionId: "sid-1",
-    });
+    // Create tool via factory with session context (OpenClaw pattern)
+    const toolWithCtx = createVerifyChainToolFactory({
+      store,
+      publicKey: deps.publicKey,
+      getChainId: (sk, sid) => getChainId(deps.chains, sk, sid),
+    })({ sessionKey: "test-session", sessionId: "sid-1" });
+
+    const result = await toolWithCtx.execute("tc-v", {});
 
     expect(result.content[0].text).toContain("is valid");
   });

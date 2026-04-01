@@ -3,7 +3,7 @@
 # Smoke test: openclaw-attest plugin with a live OpenClaw instance
 #
 # Run this inside a `script` session to record everything:
-#   script -q ~/repos/openclaw-attest/docs/smoke-test-recording.txt bash docs/smoke-test.sh
+#   script -q ~/repos/openclaw-attest/scripts/smoke-test-recording.txt bash scripts/smoke-test.sh
 #
 # Prerequisites:
 #   - ANTHROPIC_API_KEY set in environment
@@ -28,8 +28,34 @@ echo "=== 2. Installing openclaw-attest plugin (linked) ==="
 $OPENCLAW --dev plugins install . --link
 
 echo ""
+echo "=== 2b. Adding attest tools to tool policy allowlist ==="
+# The "coding" tool profile does not include plugin tools by default.
+# Tools must be added via tools.alsoAllow for the agent to see them.
+OPENCLAW_JSON="$HOME/.openclaw-dev/openclaw.json"
+if command -v node &>/dev/null; then
+  node -e "
+    const fs = require('fs');
+    const cfg = JSON.parse(fs.readFileSync('$OPENCLAW_JSON', 'utf8'));
+    cfg.tools = cfg.tools || {};
+    const allow = new Set(cfg.tools.alsoAllow || []);
+    allow.add('attest_query_receipts');
+    allow.add('attest_verify_chain');
+    cfg.tools.alsoAllow = [...allow];
+    fs.writeFileSync('$OPENCLAW_JSON', JSON.stringify(cfg, null, 2) + '\n');
+  "
+  echo "Added attest tools to tools.alsoAllow"
+else
+  echo "WARNING: node not found — manually add attest tools to tools.alsoAllow in $OPENCLAW_JSON"
+fi
+
+echo ""
 echo "=== 3. Verifying plugin is installed ==="
 $OPENCLAW --dev plugins list
+
+echo ""
+echo "=== 3b. Clearing old sessions and receipts for clean run ==="
+rm -rf ~/.openclaw-dev/agents/main/sessions/*
+rm -f ~/.openclaw/attest/receipts.db
 
 echo ""
 echo "=== 4. Starting gateway in background ==="
@@ -47,4 +73,4 @@ kill $GATEWAY_PID 2>/dev/null || true
 wait $GATEWAY_PID 2>/dev/null || true
 
 echo ""
-echo "=== Done! Check ~/.openclaw-dev/attest/ for receipts.db ==="
+echo "=== Done! Check ~/.openclaw/attest/ for receipts.db ==="
