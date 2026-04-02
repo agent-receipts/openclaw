@@ -2,7 +2,7 @@
 
 # openclaw-attest
 
-### Attest Protocol plugin for OpenClaw
+### Agent Receipts plugin for OpenClaw
 
 [![npm](https://img.shields.io/npm/v/@agnt-rcpt/openclaw)](https://www.npmjs.com/package/@agnt-rcpt/openclaw)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -71,13 +71,13 @@ AI agents that read files, run commands, and browse the web are powerful — but
 
 ### Beyond local storage
 
-Today, receipts are stored locally in SQLite — fully under your control. The [Attest Protocol](https://github.com/agent-receipts/ar/tree/main/spec) is designed for receipts to travel further when you choose: publishing to a shared ledger, forwarding to a compliance system, or exchanging with other agents as proof of prior actions. The receipts are portable W3C Verifiable Credentials, but where they go is always your decision.
+Today, receipts are stored locally in SQLite — fully under your control. The [Agent Receipts protocol](https://github.com/agent-receipts/ar/tree/main/spec) is designed for receipts to travel further when you choose: publishing to a shared ledger, forwarding to a compliance system, or exchanging with other agents as proof of prior actions. The receipts are portable W3C Verifiable Credentials, but where they go is always your decision.
 
 ## How it works
 
 Every time the OpenClaw agent executes a tool, this plugin:
 
-1. **Classifies the action** using the [Attest Protocol taxonomy](https://github.com/agent-receipts/ar/tree/main/spec/tree/main/spec/taxonomy)
+1. **Classifies the action** using the [Agent Receipts taxonomy](https://github.com/agent-receipts/ar/tree/main/spec/tree/main/spec/taxonomy)
 2. **Creates a signed receipt** — a [W3C Verifiable Credential](https://www.w3.org/TR/vc-data-model-2.0/) with Ed25519 proof
 3. **Hash-links it** into a per-session chain (tamper-evident)
 4. **Stores it** in a local SQLite database
@@ -178,7 +178,7 @@ Each receipt is a W3C Verifiable Credential signed with Ed25519, recording:
 
 ## Taxonomy
 
-The plugin maps OpenClaw tool names to Attest Protocol action types:
+The plugin maps OpenClaw tool names to Agent Receipts action types:
 
 | OpenClaw tool | Action type | Risk |
 |:---|:---|:---|

@@ -1,6 +1,6 @@
 {
   "id": "openclaw-attest",
-  "name": "Attest Protocol",
+  "name": "Agent Receipts",
   "description": "Cryptographically signed audit trail for agent actions",
   "contracts": {
     "tools": ["attest_query_receipts", "attest_verify_chain"]

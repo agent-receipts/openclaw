@@ -1,7 +1,7 @@
 # AGENTS.md
 
 OpenClaw plugin that generates cryptographically signed, hash-linked audit trails
-for every tool call an agent makes, using the Attest Protocol. Receipts are W3C
+for every tool call an agent makes, using Agent Receipts. Receipts are W3C
 Verifiable Credentials stored in a local SQLite database.
 
 ## Commands

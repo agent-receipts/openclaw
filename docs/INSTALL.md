@@ -69,6 +69,6 @@ After setup, restart the gateway and confirm the plugin loaded:
 openclaw plugins list
 ```
 
-You should see `Attest Protocol` with status `loaded`. Then ask the agent
+You should see `Agent Receipts` with status `loaded`. Then ask the agent
 to use `attest_query_receipts` or `attest_verify_chain` to confirm the
 tools are visible.

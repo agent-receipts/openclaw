@@ -1,7 +1,7 @@
 {
   "name": "@agnt-rcpt/openclaw",
   "version": "0.2.0",
-  "description": "Cryptographically signed audit trail for OpenClaw agent actions via Attest Protocol",
+  "description": "Cryptographically signed audit trail for OpenClaw agent actions via Agent Receipts",
   "type": "module",
   "license": "MIT",
   "author": "Otto Jongerius",

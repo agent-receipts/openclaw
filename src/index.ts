@@ -1,9 +1,9 @@
 /**
- * openclaw-attest — Attest Protocol plugin for OpenClaw
+ * openclaw-attest — Agent Receipts plugin for OpenClaw
  *
  * Generates cryptographically signed, hash-linked action receipts
  * for every tool call the agent makes, creating a tamper-evident
- * audit trail using the Attest Protocol TypeScript SDK.
+ * audit trail using the Agent Receipts TypeScript SDK.
  */
 
 import { dirname } from "node:path";
@@ -19,7 +19,7 @@ import { createQueryReceiptsToolFactory, createVerifyChainToolFactory } from "./
 
 export default definePluginEntry({
   id: "openclaw-attest",
-  name: "Attest Protocol",
+  name: "Agent Receipts",
   description: "Cryptographically signed audit trail for agent actions",
 
   register(api) {
