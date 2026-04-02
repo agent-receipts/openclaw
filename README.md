@@ -1,6 +1,6 @@
 <div align="center">
 
-# openclaw-attest
+# openclaw-agent-receipts
 
 ### Agent Receipts plugin for OpenClaw
 
@@ -136,7 +136,7 @@ Run `npx @agnt-rcpt/openclaw --help` for all options including `--status`, `--li
 
 ## Agent tools
 
-### `attest_query_receipts`
+### `ar_query_receipts`
 
 Search the audit trail by action type, risk level, or outcome status. Returns receipt summaries and aggregate statistics.
 
@@ -152,7 +152,7 @@ Search the audit trail by action type, risk level, or outcome status. Returns re
 }
 ```
 
-### `attest_verify_chain`
+### `ar_verify_chain`
 
 Cryptographically verify the integrity of the receipt chain. Checks Ed25519 signatures, hash links, and sequence numbering.
 
@@ -200,8 +200,8 @@ All settings are optional — the plugin works out of the box with sensible defa
 | Setting | Default | Description |
 |:---|:---|:---|
 | `enabled` | `true` | Generate receipts for tool calls |
-| `dbPath` | `~/.openclaw/attest/receipts.db` | SQLite receipt database path |
-| `keyPath` | `~/.openclaw/attest/keys.json` | Ed25519 signing key pair path |
+| `dbPath` | `~/.openclaw/agent-receipts/receipts.db` | SQLite receipt database path |
+| `keyPath` | `~/.openclaw/agent-receipts/keys.json` | Ed25519 signing key pair path |
 | `taxonomyPath` | _(bundled)_ | Custom tool-to-action-type mapping |
 
 Ed25519 signing keys are generated automatically on first run and persisted to `keyPath`.
@@ -215,7 +215,7 @@ src/
   hooks.ts          # before_tool_call / after_tool_call → receipt creation
   classify.ts       # Tool name → action type + risk level classification
   chain.ts          # Per-session hash-linked chain state
-  tools.ts          # attest_query_receipts + attest_verify_chain
+  tools.ts          # ar_query_receipts + ar_verify_chain
   config.ts         # Config resolution + Ed25519 key management
 taxonomy.json       # Default OpenClaw tool → action type mappings
 ```

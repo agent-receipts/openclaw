@@ -9,8 +9,8 @@ describe("resolveConfig", () => {
   it("returns defaults when no config provided", () => {
     const cfg = resolveConfig();
 
-    expect(cfg.dbPath).toContain(".openclaw/attest/receipts.db");
-    expect(cfg.keyPath).toContain(".openclaw/attest/keys.json");
+    expect(cfg.dbPath).toContain(".openclaw/agent-receipts/receipts.db");
+    expect(cfg.keyPath).toContain(".openclaw/agent-receipts/keys.json");
     expect(cfg.taxonomyPath).toBeUndefined();
     expect(cfg.enabled).toBe(true);
   });
@@ -69,7 +69,7 @@ describe("loadOrCreateKeys", () => {
   });
 
   it("generates and persists keys when file does not exist", () => {
-    tempDir = join(tmpdir(), `attest-test-${randomUUID()}`);
+    tempDir = join(tmpdir(), `ar-test-${randomUUID()}`);
     const keyPath = join(tempDir, "keys.json");
 
     const keys = loadOrCreateKeys(keyPath);
@@ -85,7 +85,7 @@ describe("loadOrCreateKeys", () => {
   });
 
   it("loads existing keys from file", () => {
-    tempDir = join(tmpdir(), `attest-test-${randomUUID()}`);
+    tempDir = join(tmpdir(), `ar-test-${randomUUID()}`);
     mkdirSync(tempDir, { recursive: true });
     const keyPath = join(tempDir, "keys.json");
 
@@ -104,7 +104,7 @@ describe("loadOrCreateKeys", () => {
   });
 
   it("adds default verificationMethod if missing from stored file", () => {
-    tempDir = join(tmpdir(), `attest-test-${randomUUID()}`);
+    tempDir = join(tmpdir(), `ar-test-${randomUUID()}`);
     mkdirSync(tempDir, { recursive: true });
     const keyPath = join(tempDir, "keys.json");
 
@@ -116,7 +116,7 @@ describe("loadOrCreateKeys", () => {
   });
 
   it("writes key file with restrictive permissions (owner-only)", () => {
-    tempDir = join(tmpdir(), `attest-test-${randomUUID()}`);
+    tempDir = join(tmpdir(), `ar-test-${randomUUID()}`);
     const keyPath = join(tempDir, "keys.json");
 
     loadOrCreateKeys(keyPath);
@@ -127,7 +127,7 @@ describe("loadOrCreateKeys", () => {
   });
 
   it("tightens permissions on existing key files with insecure mode", () => {
-    tempDir = join(tmpdir(), `attest-test-${randomUUID()}`);
+    tempDir = join(tmpdir(), `ar-test-${randomUUID()}`);
     mkdirSync(tempDir, { recursive: true });
     const keyPath = join(tempDir, "keys.json");
 

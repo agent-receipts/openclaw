@@ -158,6 +158,6 @@ export async function afterToolCall(
   advanceChain(deps.chains, sessionKey, sessionId, hash);
 
   deps.logger.info(
-    `attest: receipt ${signed.id} (${classification.action_type}, ${classification.risk_level}) → chain ${chain.chainId} seq ${nextSequence}`,
+    `agent-receipts: receipt ${signed.id} (${classification.action_type}, ${classification.risk_level}) → chain ${chain.chainId} seq ${nextSequence}`,
   );
 }

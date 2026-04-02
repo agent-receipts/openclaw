@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
-# Smoke test: openclaw-attest plugin with a live OpenClaw instance
+# Smoke test: openclaw-agent-receipts plugin with a live OpenClaw instance
 #
 # Run this inside a `script` session to record everything:
-#   script -q ~/repos/openclaw-attest/scripts/smoke-test-recording.txt bash scripts/smoke-test.sh
+#   script -q ~/repos/openclaw-agent-receipts/scripts/smoke-test-recording.txt bash scripts/smoke-test.sh
 #
 # Prerequisites:
 #   - ANTHROPIC_API_KEY set in environment
@@ -24,11 +24,11 @@ $OPENCLAW --dev onboard --non-interactive --accept-risk --skip-health \
   --anthropic-api-key "$ANTHROPIC_API_KEY"
 
 echo ""
-echo "=== 2. Installing openclaw-attest plugin (linked) ==="
+echo "=== 2. Installing openclaw-agent-receipts plugin (linked) ==="
 $OPENCLAW --dev plugins install . --link
 
 echo ""
-echo "=== 2b. Adding attest tools to tool policy allowlist ==="
+echo "=== 2b. Adding agent-receipts tools to tool policy allowlist ==="
 # The "coding" tool profile does not include plugin tools by default.
 # Tools must be added via tools.alsoAllow for the agent to see them.
 OPENCLAW_JSON="$HOME/.openclaw-dev/openclaw.json"
@@ -38,14 +38,14 @@ if command -v node &>/dev/null; then
     const cfg = JSON.parse(fs.readFileSync('$OPENCLAW_JSON', 'utf8'));
     cfg.tools = cfg.tools || {};
     const allow = new Set(cfg.tools.alsoAllow || []);
-    allow.add('attest_query_receipts');
-    allow.add('attest_verify_chain');
+    allow.add('ar_query_receipts');
+    allow.add('ar_verify_chain');
     cfg.tools.alsoAllow = [...allow];
     fs.writeFileSync('$OPENCLAW_JSON', JSON.stringify(cfg, null, 2) + '\n');
   "
-  echo "Added attest tools to tools.alsoAllow"
+  echo "Added agent-receipts tools to tools.alsoAllow"
 else
-  echo "WARNING: node not found — manually add attest tools to tools.alsoAllow in $OPENCLAW_JSON"
+  echo "WARNING: node not found — manually add agent-receipts tools to tools.alsoAllow in $OPENCLAW_JSON"
 fi
 
 echo ""
@@ -55,7 +55,7 @@ $OPENCLAW --dev plugins list
 echo ""
 echo "=== 3b. Clearing old sessions and receipts for clean run ==="
 rm -rf ~/.openclaw-dev/agents/main/sessions/*
-rm -f ~/.openclaw/attest/receipts.db
+rm -f ~/.openclaw/agent-receipts/receipts.db
 
 echo ""
 echo "=== 4. Starting gateway in background ==="
@@ -65,7 +65,7 @@ sleep 5  # give gateway time to start
 
 echo ""
 echo "=== 5. Triggering tool calls + querying receipts ==="
-$OPENCLAW --dev agent --agent main --message "List the files in /tmp. Then use the attest_query_receipts tool to show me the audit trail, and finally use attest_verify_chain to verify the chain integrity."
+$OPENCLAW --dev agent --agent main --message "List the files in /tmp. Then use the ar_query_receipts tool to show me the audit trail, and finally use ar_verify_chain to verify the chain integrity."
 
 echo ""
 echo "=== 6. Shutting down gateway ==="
@@ -73,4 +73,4 @@ kill $GATEWAY_PID 2>/dev/null || true
 wait $GATEWAY_PID 2>/dev/null || true
 
 echo ""
-echo "=== Done! Check ~/.openclaw/attest/ for receipts.db ==="
+echo "=== Done! Check ~/.openclaw/agent-receipts/ for receipts.db ==="

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Demo: generate a nice screenshot-worthy output from openclaw-attest
+# Demo: generate a nice screenshot-worthy output from openclaw-agent-receipts
 #
 # Prerequisites:
 #   - Plugin installed and alsoAllow configured (run smoke-test.sh first)
@@ -13,7 +13,7 @@ OPENCLAW="npx --yes openclaw"
 
 echo "=== Clearing old sessions + receipts ==="
 rm -rf ~/.openclaw-dev/agents/main/sessions/*
-rm -f ~/.openclaw/attest/receipts.db
+rm -f ~/.openclaw/agent-receipts/receipts.db
 
 echo ""
 echo "=== Starting gateway ==="
@@ -24,12 +24,12 @@ sleep 5
 echo ""
 echo "=== Step 1: Generate some tool traffic ==="
 $OPENCLAW --dev agent --agent main --message \
-  "Do these three things quietly and briefly: 1) List files in /tmp 2) Read the file /etc/hostname 3) Write 'hello attest' to /tmp/attest-demo/greeting.txt"
+  "Do these three things quietly and briefly: 1) List files in /tmp 2) Read the file /etc/hostname 3) Write 'hello agent-receipts' to /tmp/ar-demo/greeting.txt"
 
 echo ""
 echo "=== Step 2: Query the audit trail ==="
 $OPENCLAW --dev agent --agent main --message \
-  "Use attest_query_receipts to show the full audit trail, then use attest_verify_chain to verify chain integrity."
+  "Use ar_query_receipts to show the full audit trail, then use ar_verify_chain to verify chain integrity."
 
 echo ""
 echo "=== Shutting down ==="

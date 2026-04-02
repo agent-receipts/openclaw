@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 
 /**
- * Receipt Explorer CLI for openclaw-attest.
+ * Receipt Explorer CLI for openclaw-agent-receipts.
  *
  * Query and verify the SQLite receipt database outside of the agent.
  * Useful for auditing and debugging.
  *
  * Usage:
- *   openclaw-attest receipts [--risk <level>] [--action <type>] [--status <status>] [--limit <n>] [--db <path>] [--json]
- *   openclaw-attest verify [--chain <id>] [--db <path>] [--json]
- *   openclaw-attest export [--chain <id>] [--id <receipt-id>] [--format receipt|presentation] [--db <path>]
- *   openclaw-attest --help
- *   openclaw-attest --version
+ *   openclaw-agent-receipts receipts [--risk <level>] [--action <type>] [--status <status>] [--limit <n>] [--db <path>] [--json]
+ *   openclaw-agent-receipts verify [--chain <id>] [--db <path>] [--json]
+ *   openclaw-agent-receipts export [--chain <id>] [--id <receipt-id>] [--format receipt|presentation] [--db <path>]
+ *   openclaw-agent-receipts --help
+ *   openclaw-agent-receipts --version
  */
 
 import { parseArgs } from "node:util";
@@ -58,7 +58,7 @@ const VALID_RISK_LEVELS = new Set<string>(["low", "medium", "high", "critical"])
 const VALID_STATUSES = new Set<string>(["success", "failure", "pending"]);
 const VALID_FORMATS = new Set<string>(["receipt", "presentation"]);
 
-const DEFAULT_DB_PATH = "~/.openclaw/attest/receipts.db";
+const DEFAULT_DB_PATH = "~/.openclaw/agent-receipts/receipts.db";
 const DEFAULT_LIMIT = 20;
 
 // ---------------------------------------------------------------------------
@@ -101,21 +101,21 @@ function loadVersion(): string {
 // ---------------------------------------------------------------------------
 
 export function helpText(): string {
-  return `openclaw-attest — Receipt Explorer CLI
+  return `openclaw-agent-receipts — Receipt Explorer CLI
 
 Usage:
-  openclaw-attest receipts [options]   Query receipts from the audit trail
-  openclaw-attest verify  [options]    Verify chain integrity
-  openclaw-attest export  [options]    Export receipts as JSON-LD
-  openclaw-attest --help               Show this help
-  openclaw-attest --version            Show version
+  openclaw-agent-receipts receipts [options]   Query receipts from the audit trail
+  openclaw-agent-receipts verify  [options]    Verify chain integrity
+  openclaw-agent-receipts export  [options]    Export receipts as JSON-LD
+  openclaw-agent-receipts --help               Show this help
+  openclaw-agent-receipts --version            Show version
 
 receipts options:
   --risk <level>     Filter by risk level (low, medium, high, critical)
   --action <type>    Filter by action type (e.g. filesystem.file.read)
   --status <status>  Filter by outcome (success, failure, pending)
   --limit <n>        Max results (default: 20)
-  --db <path>        Override database path (default: ~/.openclaw/attest/receipts.db)
+  --db <path>        Override database path (default: ~/.openclaw/agent-receipts/receipts.db)
   --json             Output as JSON
 
 verify options:
@@ -532,7 +532,7 @@ export function run(argv: string[]): void {
       break;
 
     case "version":
-      process.stdout.write(`openclaw-attest v${loadVersion()}\n`);
+      process.stdout.write(`openclaw-agent-receipts v${loadVersion()}\n`);
       break;
 
     case "receipts":

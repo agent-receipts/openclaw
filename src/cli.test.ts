@@ -149,7 +149,7 @@ describe("parseCliArgs", () => {
 describe("helpText", () => {
   it("includes usage information", () => {
     const text = helpText();
-    expect(text).toContain("openclaw-attest");
+    expect(text).toContain("openclaw-agent-receipts");
     expect(text).toContain("receipts");
     expect(text).toContain("verify");
     expect(text).toContain("export");
@@ -352,7 +352,7 @@ describe("run", () => {
 
   it("outputs help text with --help", () => {
     run(["--help"]);
-    expect(stdoutData).toContain("openclaw-attest");
+    expect(stdoutData).toContain("openclaw-agent-receipts");
     expect(stdoutData).toContain("receipts");
     expect(stdoutData).toContain("verify");
     expect(stdoutData).toContain("export");
@@ -360,7 +360,7 @@ describe("run", () => {
 
   it("outputs version with --version", () => {
     run(["--version"]);
-    expect(stdoutData).toContain("openclaw-attest v");
+    expect(stdoutData).toContain("openclaw-agent-receipts v");
   });
 
   it("throws on unknown command", () => {

@@ -10,8 +10,8 @@ export type AttestPluginConfig = {
 };
 
 const DEFAULTS = {
-  dbPath: "~/.openclaw/attest/receipts.db",
-  keyPath: "~/.openclaw/attest/keys.json",
+  dbPath: "~/.openclaw/agent-receipts/receipts.db",
+  keyPath: "~/.openclaw/agent-receipts/keys.json",
 };
 
 function expandHome(p: string): string {

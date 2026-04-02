@@ -1,4 +1,4 @@
-# Installing openclaw-attest
+# Installing openclaw-agent-receipts
 
 ## Quick start
 
@@ -7,20 +7,20 @@
 openclaw plugins install @agnt-rcpt/openclaw
 
 # Or link a local clone for development
-openclaw plugins install /path/to/openclaw-attest --link
+openclaw plugins install /path/to/openclaw-agent-receipts --link
 ```
 
 ## Tool visibility
 
 OpenClaw's tool policy pipeline filters which tools the agent can use.
 The default `"coding"` profile does not include plugin tools, so after
-installing you must allowlist the two attest tools in your `openclaw.json`:
+installing you must allowlist the two agent-receipts tools in your `openclaw.json`:
 
 ```jsonc
 {
   "tools": {
     "profile": "coding",
-    "alsoAllow": ["attest_query_receipts", "attest_verify_chain"]
+    "alsoAllow": ["ar_query_receipts", "ar_verify_chain"]
   }
 }
 ```
@@ -34,7 +34,7 @@ tools, or allowlist the entire plugin by ID:
 ```jsonc
 {
   "tools": {
-    "alsoAllow": ["openclaw-attest"]
+    "alsoAllow": ["openclaw-agent-receipts"]
   }
 }
 ```
@@ -47,12 +47,12 @@ All config is optional with sensible defaults:
 {
   "plugins": {
     "entries": {
-      "openclaw-attest": {
+      "openclaw-agent-receipts": {
         "enabled": true,
         "config": {
           "enabled": true,
-          "dbPath": "~/.openclaw/attest/receipts.db",
-          "keyPath": "~/.openclaw/attest/keys.json",
+          "dbPath": "~/.openclaw/agent-receipts/receipts.db",
+          "keyPath": "~/.openclaw/agent-receipts/keys.json",
           "taxonomyPath": null  // custom taxonomy mapping
         }
       }
@@ -70,5 +70,5 @@ openclaw plugins list
 ```
 
 You should see `Agent Receipts` with status `loaded`. Then ask the agent
-to use `attest_query_receipts` or `attest_verify_chain` to confirm the
+to use `ar_query_receipts` or `ar_verify_chain` to confirm the
 tools are visible.

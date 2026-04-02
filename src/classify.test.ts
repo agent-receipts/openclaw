@@ -114,7 +114,7 @@ describe("loadCustomMappings", () => {
   });
 
   it("overrides default mappings with custom ones", () => {
-    tempDir = join(tmpdir(), `attest-taxonomy-${randomUUID()}`);
+    tempDir = join(tmpdir(), `ar-taxonomy-${randomUUID()}`);
     mkdirSync(tempDir, { recursive: true });
     const taxPath = join(tempDir, "taxonomy.json");
 
@@ -133,7 +133,7 @@ describe("loadCustomMappings", () => {
   });
 
   it("preserves default mappings for tools not in custom file", () => {
-    tempDir = join(tmpdir(), `attest-taxonomy-${randomUUID()}`);
+    tempDir = join(tmpdir(), `ar-taxonomy-${randomUUID()}`);
     mkdirSync(tempDir, { recursive: true });
     const taxPath = join(tempDir, "taxonomy.json");
 
@@ -160,7 +160,7 @@ describe("loadCustomMappings", () => {
   });
 
   it("throws on malformed JSON", () => {
-    tempDir = join(tmpdir(), `attest-taxonomy-${randomUUID()}`);
+    tempDir = join(tmpdir(), `ar-taxonomy-${randomUUID()}`);
     mkdirSync(tempDir, { recursive: true });
     const taxPath = join(tempDir, "taxonomy.json");
 
@@ -170,7 +170,7 @@ describe("loadCustomMappings", () => {
   });
 
   it("merges custom patterns with defaults", () => {
-    tempDir = join(tmpdir(), `attest-taxonomy-${randomUUID()}`);
+    tempDir = join(tmpdir(), `ar-taxonomy-${randomUUID()}`);
     mkdirSync(tempDir, { recursive: true });
     const taxPath = join(tempDir, "taxonomy.json");
 
@@ -193,7 +193,7 @@ describe("loadCustomMappings", () => {
   });
 
   it("custom patterns override default patterns with same prefix", () => {
-    tempDir = join(tmpdir(), `attest-taxonomy-${randomUUID()}`);
+    tempDir = join(tmpdir(), `ar-taxonomy-${randomUUID()}`);
     mkdirSync(tempDir, { recursive: true });
     const taxPath = join(tempDir, "taxonomy.json");
 
@@ -212,7 +212,7 @@ describe("loadCustomMappings", () => {
   });
 
   it("works when custom file has no patterns field", () => {
-    tempDir = join(tmpdir(), `attest-taxonomy-${randomUUID()}`);
+    tempDir = join(tmpdir(), `ar-taxonomy-${randomUUID()}`);
     mkdirSync(tempDir, { recursive: true });
     const taxPath = join(tempDir, "taxonomy.json");
 
@@ -230,7 +230,7 @@ describe("loadCustomMappings", () => {
   });
 
   it("works when custom file has only patterns (no mappings)", () => {
-    tempDir = join(tmpdir(), `attest-taxonomy-${randomUUID()}`);
+    tempDir = join(tmpdir(), `ar-taxonomy-${randomUUID()}`);
     mkdirSync(tempDir, { recursive: true });
     const taxPath = join(tempDir, "taxonomy.json");
 

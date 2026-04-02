@@ -29,12 +29,12 @@ type ToolFactoryContext = {
 };
 
 /**
- * Create a factory function for the attest_query_receipts tool.
+ * Create a factory function for the ar_query_receipts tool.
  * The factory is called by OpenClaw at runtime with session context.
  */
 export function createQueryReceiptsToolFactory(deps: ToolDeps) {
   return (_ctx: ToolFactoryContext) => ({
-    name: "attest_query_receipts",
+    name: "ar_query_receipts",
     label: "Query Attestation Receipts",
     description:
       "Search the cryptographic audit trail of actions taken in this session. " +
@@ -104,12 +104,12 @@ export function createQueryReceiptsToolFactory(deps: ToolDeps) {
 }
 
 /**
- * Create a factory function for the attest_verify_chain tool.
+ * Create a factory function for the ar_verify_chain tool.
  * The factory captures session context from OpenClaw at runtime.
  */
 export function createVerifyChainToolFactory(deps: ToolDeps) {
   return (ctx: ToolFactoryContext) => ({
-    name: "attest_verify_chain",
+    name: "ar_verify_chain",
     label: "Verify Attestation Chain",
     description:
       "Cryptographically verify the integrity of the action receipt chain for a session. " +
@@ -163,7 +163,7 @@ export function createVerifyChainToolFactory(deps: ToolDeps) {
 // --- Legacy direct-tool creators (used by tests) ---
 
 /**
- * Create the attest_query_receipts tool definition (non-factory).
+ * Create the ar_query_receipts tool definition (non-factory).
  * @deprecated Use createQueryReceiptsToolFactory for OpenClaw integration.
  */
 export function createQueryReceiptsTool(deps: ToolDeps) {
@@ -171,7 +171,7 @@ export function createQueryReceiptsTool(deps: ToolDeps) {
 }
 
 /**
- * Create the attest_verify_chain tool definition (non-factory).
+ * Create the ar_verify_chain tool definition (non-factory).
  * @deprecated Use createVerifyChainToolFactory for OpenClaw integration.
  */
 export function createVerifyChainTool(deps: ToolDeps) {

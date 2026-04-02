@@ -24,7 +24,7 @@
     }
   },
   "bin": {
-    "openclaw-attest": "dist/src/cli.js"
+    "openclaw-agent-receipts": "dist/src/cli.js"
   },
   "files": [
     "dist",

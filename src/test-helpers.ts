@@ -1,5 +1,5 @@
 /**
- * Shared test utilities for openclaw-attest tests.
+ * Shared test utilities for openclaw-agent-receipts tests.
  */
 
 import {

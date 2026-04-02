@@ -1,5 +1,5 @@
 /**
- * openclaw-attest — Agent Receipts plugin for OpenClaw
+ * openclaw-agent-receipts — Agent Receipts plugin for OpenClaw
  *
  * Generates cryptographically signed, hash-linked action receipts
  * for every tool call the agent makes, creating a tamper-evident
@@ -18,7 +18,7 @@ import { resetChain, getChainId, type ChainsMap, type ChainState } from "./chain
 import { createQueryReceiptsToolFactory, createVerifyChainToolFactory } from "./tools.js";
 
 export default definePluginEntry({
-  id: "openclaw-attest",
+  id: "openclaw-agent-receipts",
   name: "Agent Receipts",
   description: "Cryptographically signed audit trail for agent actions",
 
@@ -26,7 +26,7 @@ export default definePluginEntry({
     const cfg = resolveConfig(api.pluginConfig);
 
     if (!cfg.enabled) {
-      api.logger.info("attest: plugin disabled via config");
+      api.logger.info("agent-receipts: plugin disabled via config");
       return;
     }
 
@@ -40,17 +40,17 @@ export default definePluginEntry({
       const custom = loadCustomMappings(cfg.taxonomyPath);
       mappings = custom.mappings;
       patterns = custom.patterns;
-      api.logger.info(`attest: loaded custom taxonomy from ${cfg.taxonomyPath}`);
+      api.logger.info(`agent-receipts: loaded custom taxonomy from ${cfg.taxonomyPath}`);
     }
 
     // Init signing keys (generate on first run)
     const keys = loadOrCreateKeys(cfg.keyPath);
-    api.logger.info(`attest: keys loaded from ${cfg.keyPath}`);
+    api.logger.info(`agent-receipts: keys loaded from ${cfg.keyPath}`);
 
     // Open receipt store
     mkdirSync(dirname(cfg.dbPath), { recursive: true });
     const store = openStore(cfg.dbPath);
-    api.logger.info(`attest: receipt store opened at ${cfg.dbPath}`);
+    api.logger.info(`agent-receipts: receipt store opened at ${cfg.dbPath}`);
 
     const agentId = api.id;
 
@@ -74,7 +74,7 @@ export default definePluginEntry({
       const sessionId = ctx.sessionId;
       resetChain(chains, sessionKey, sessionId);
       pending.clear();
-      api.logger.info(`attest: new chain for session ${sessionKey}`);
+      api.logger.info(`agent-receipts: new chain for session ${sessionKey}`);
     });
 
     // Capture tool call context before execution
@@ -91,7 +91,7 @@ export default definePluginEntry({
       try {
         await afterToolCall(event, ctx, hookDeps);
       } catch (err) {
-        api.logger.warn(`attest: receipt creation failed: ${String(err)}`);
+        api.logger.warn(`agent-receipts: receipt creation failed: ${String(err)}`);
       }
     });
 
@@ -106,26 +106,26 @@ export default definePluginEntry({
 
     // Register as factory functions (OpenClawPluginToolFactory pattern)
     api.registerTool(createQueryReceiptsToolFactory(toolDeps), {
-      name: "attest_query_receipts",
+      name: "ar_query_receipts",
     });
 
     api.registerTool(createVerifyChainToolFactory(toolDeps), {
-      name: "attest_verify_chain",
+      name: "ar_verify_chain",
     });
 
     // --- Service: clean up store on shutdown ---
 
     api.registerService({
-      id: "attest-store",
+      id: "ar-store",
       async start() {
         // Store is already opened during register — nothing to do
       },
       async stop() {
         store.close();
-        api.logger.info("attest: receipt store closed");
+        api.logger.info("agent-receipts: receipt store closed");
       },
     });
 
-    api.logger.info("attest: plugin registered — receipts will be generated for all tool calls");
+    api.logger.info("agent-receipts: plugin registered — receipts will be generated for all tool calls");
   },
 });

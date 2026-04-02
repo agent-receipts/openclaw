@@ -4,7 +4,7 @@ import { createQueryReceiptsTool, createVerifyChainTool, createVerifyChainToolFa
 import { makeHookDeps, simulateToolCall } from "./test-helpers.js";
 import { getChainId } from "./chain.js";
 
-describe("attest_query_receipts", () => {
+describe("ar_query_receipts", () => {
   let store: ReceiptStore;
   let deps: ReturnType<typeof makeHookDeps>;
   let tool: ReturnType<typeof createQueryReceiptsTool>;
@@ -125,7 +125,7 @@ describe("attest_query_receipts", () => {
   });
 });
 
-describe("attest_verify_chain", () => {
+describe("ar_verify_chain", () => {
   let store: ReceiptStore;
   let deps: ReturnType<typeof makeHookDeps>;
   let tool: ReturnType<typeof createVerifyChainTool>;

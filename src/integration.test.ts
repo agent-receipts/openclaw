@@ -99,7 +99,7 @@ describe("integration: full plugin lifecycle", () => {
   });
 
   function setupPlugin(configOverrides?: Record<string, unknown>) {
-    tempDir = join(tmpdir(), `attest-integration-${randomUUID()}`);
+    tempDir = join(tmpdir(), `ar-integration-${randomUUID()}`);
     mkdirSync(tempDir, { recursive: true });
 
     const config = {
@@ -130,12 +130,12 @@ describe("integration: full plugin lifecycle", () => {
     expect(hooks.has("after_tool_call")).toBe(true);
 
     // Two tools registered
-    expect(tools.has("attest_query_receipts")).toBe(true);
-    expect(tools.has("attest_verify_chain")).toBe(true);
+    expect(tools.has("ar_query_receipts")).toBe(true);
+    expect(tools.has("ar_verify_chain")).toBe(true);
 
     // One service registered
     expect(services).toHaveLength(1);
-    expect(services[0].id).toBe("attest-store");
+    expect(services[0].id).toBe("ar-store");
 
     // Logs confirm successful registration
     expect(logs.some((l) => l.includes("plugin registered"))).toBe(true);
@@ -167,7 +167,7 @@ describe("integration: full plugin lifecycle", () => {
     }
 
     // 3. Query receipts via the registered tool
-    const queryTool = tools.get("attest_query_receipts")!.definition;
+    const queryTool = tools.get("ar_query_receipts")!.definition;
     const queryResult = await queryTool.execute("tc-query", {});
     const queryData = JSON.parse(queryResult.content[0].text);
 
@@ -187,7 +187,7 @@ describe("integration: full plugin lifecycle", () => {
     expect(queryData.results[2].sequence).toBe(3);
 
     // 4. Verify chain integrity via the registered tool (resolve factory with session context)
-    const verifyFactory = tools.get("attest_verify_chain")!.factory!;
+    const verifyFactory = tools.get("ar_verify_chain")!.factory!;
     const verifyTool = verifyFactory(sessionCtx);
     const verifyResult = await verifyTool.execute("tc-verify", {});
 
@@ -229,7 +229,7 @@ describe("integration: full plugin lifecycle", () => {
     await fireHook(hooks, "after_tool_call", { ...event, result: { ok: true } }, session2);
 
     // Verify both chains independently (resolve factory per session)
-    const verifyFactory = tools.get("attest_verify_chain")!.factory!;
+    const verifyFactory = tools.get("ar_verify_chain")!.factory!;
 
     const r1 = await verifyFactory(session1).execute("v1", {});
     const d1 = JSON.parse(r1.content[1].text);
@@ -242,7 +242,7 @@ describe("integration: full plugin lifecycle", () => {
     expect(d2.length).toBe(1);
 
     // Session 2's receipt starts at sequence 1 (fresh chain)
-    const queryTool = tools.get("attest_query_receipts")!.definition;
+    const queryTool = tools.get("ar_query_receipts")!.definition;
     const qr = await queryTool.execute("q", { action_type: "filesystem.file.delete" });
     const qd = JSON.parse(qr.content[0].text);
     expect(qd.results[0].sequence).toBe(1);
@@ -269,7 +269,7 @@ describe("integration: full plugin lifecycle", () => {
       error: "Command failed with exit code 1",
     }, { sessionKey: "err", sessionId: "sid-err" });
 
-    const queryTool = tools.get("attest_query_receipts")!.definition;
+    const queryTool = tools.get("ar_query_receipts")!.definition;
     const result = await queryTool.execute("q", { status: "failure" });
     const data = JSON.parse(result.content[0].text);
 

@@ -24,7 +24,7 @@ CI runs typecheck + vitest + V8 coverage via GitHub Actions.
 | `src/hooks.ts` | `before_tool_call` / `after_tool_call` handlers, receipt creation |
 | `src/chain.ts` | Per-session hash-linked chain state |
 | `src/classify.ts` | Tool name → action type + risk level via taxonomy |
-| `src/tools.ts` | Agent-facing tools: `attest_query_receipts`, `attest_verify_chain` |
+| `src/tools.ts` | Agent-facing tools: `ar_query_receipts`, `ar_verify_chain` |
 | `src/config.ts` | Config resolution, Ed25519 key management |
 | `taxonomy.json` | Source of truth for tool → action type mappings |
 | `openclaw.plugin.json` | Plugin manifest (config schema, tool contracts) |

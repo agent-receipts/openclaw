@@ -1,9 +1,9 @@
 {
-  "id": "openclaw-attest",
+  "id": "openclaw-agent-receipts",
   "name": "Agent Receipts",
   "description": "Cryptographically signed audit trail for agent actions",
   "contracts": {
-    "tools": ["attest_query_receipts", "attest_verify_chain"]
+    "tools": ["ar_query_receipts", "ar_verify_chain"]
   },
   "configSchema": {
     "type": "object",
@@ -30,12 +30,12 @@
   "uiHints": {
     "dbPath": {
       "label": "Database Path",
-      "placeholder": "~/.openclaw/attest/receipts.db",
+      "placeholder": "~/.openclaw/agent-receipts/receipts.db",
       "advanced": true
     },
     "keyPath": {
       "label": "Key Path",
-      "placeholder": "~/.openclaw/attest/keys.json",
+      "placeholder": "~/.openclaw/agent-receipts/keys.json",
       "advanced": true
     },
     "taxonomyPath": {
