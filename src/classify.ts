@@ -4,12 +4,12 @@ import {
   resolveActionType,
   type ClassificationResult,
   type TaxonomyMapping,
-} from "@attest-protocol/attest-ts/taxonomy";
+} from "@agnt-rcpt/sdk-ts/taxonomy";
 
 // Default mappings bundled with the plugin
 import defaultTaxonomy from "../taxonomy.json" with { type: "json" };
 
-export { type TaxonomyMapping } from "@attest-protocol/attest-ts/taxonomy";
+export { type TaxonomyMapping } from "@agnt-rcpt/sdk-ts/taxonomy";
 
 export interface TaxonomyPattern {
   prefix: string;
@@ -55,7 +55,7 @@ export function loadCustomMappings(filePath: string): { mappings: TaxonomyMappin
 }
 
 /**
- * Classify an OpenClaw tool call into an attest-ts action type and risk level.
+ * Classify an OpenClaw tool call into an sdk-ts action type and risk level.
  *
  * Lookup order: exact match → prefix pattern → unknown.
  */

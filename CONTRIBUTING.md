@@ -1,6 +1,6 @@
 # Contributing
 
-Contributions are welcome! This plugin is part of the [Attest Protocol](https://github.com/attest-protocol) ecosystem.
+Contributions are welcome! This plugin is part of the [Agent Receipts](https://github.com/agent-receipts) ecosystem.
 
 ## Reporting Issues
 
@@ -14,8 +14,8 @@ Open a GitHub issue for:
 ## Development Setup
 
 ```bash
-git clone https://github.com/attest-protocol/openclaw-attest.git
-cd openclaw-attest
+git clone https://github.com/agent-receipts/openclaw.git
+cd openclaw
 pnpm install
 ```
 
@@ -49,7 +49,7 @@ Adding mappings for new OpenClaw tools is a great way to contribute. Edit `taxon
 
 ## Spec Alignment
 
-This plugin implements the [Action Receipt Protocol](https://github.com/attest-protocol/spec) via the `@attest-protocol/attest-ts` SDK. Changes must remain compatible with the protocol specification.
+This plugin implements the [Action Receipt Protocol](https://github.com/agent-receipts/spec) via the `@agent-receipts/sdk-ts` SDK. Changes must remain compatible with the protocol specification.
 
 ## License
 

@@ -5,7 +5,7 @@ import {
   canonicalize,
   sha256,
   type ReceiptStore,
-} from "@attest-protocol/attest-ts";
+} from "@agnt-rcpt/sdk-ts";
 import { beforeToolCall, afterToolCall } from "./hooks.js";
 import { makeHookDeps, simulateToolCall } from "./test-helpers.js";
 

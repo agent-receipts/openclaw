@@ -8,9 +8,9 @@ importers:
 
   .:
     dependencies:
-      '@attest-protocol/attest-ts':
-        specifier: ^0.1.0
-        version: 0.1.0
+      '@agnt-rcpt/sdk-ts':
+        specifier: ^0.2.0
+        version: 0.2.1
       '@sinclair/typebox':
         specifier: 0.34.49
         version: 0.34.49
@@ -38,6 +38,9 @@ packages:
     peerDependencies:
       zod: ^3.25.0 || ^4.0.0
 
+  '@agnt-rcpt/sdk-ts@0.2.1':
+    resolution: {integrity: sha512-Ae8XF+INY5Aodv2VLcqchOy7KCrRQZ1qI13Ccod/BWV6JsOx1My3uVtWyiN4i/HMz3sh+clokr734su1EF9nCg==}
+
   '@anthropic-ai/sdk@0.73.0':
     resolution: {integrity: sha512-URURVzhxXGJDGUGFunIOtBlSl7KWvZiAAKY/ttTkZAkXT9bTPqdk2eK0b8qqSxXpikh3QKPnPYpiyX98zf5ebw==}
     hasBin: true
@@ -58,9 +61,6 @@ packages:
 
   '@anthropic-ai/vertex-sdk@0.14.4':
     resolution: {integrity: sha512-BZUPRWghZxfSFtAxU563wH+jfWBPoedAwsVxG35FhmNsjeV8tyfN+lFriWhCpcZApxA4NdT6Soov+PzfnxxD5g==}
-
-  '@attest-protocol/attest-ts@0.1.0':
-    resolution: {integrity: sha512-1hcIJ18nXQMSx2ScLaX7FhgeowZtUt4dX+Q19xUS0+TBpmqAv5wdBVCGYLttiV7jF9vvfCmyAaP21y2YbqiUjA==}
 
   '@aws-crypto/crc32@5.2.0':
     resolution: {integrity: sha512-nLbCWqQNgUiwwtFsen1AdzAtvuLRsQS8rYgMuxCrdKf9kOssamGLuPwyTY9wyYblNr9+1XM8v6zoDTPPSIeANg==}
@@ -2792,6 +2792,8 @@ snapshots:
     dependencies:
       zod: 4.3.6
 
+  '@agnt-rcpt/sdk-ts@0.2.1': {}
+
   '@anthropic-ai/sdk@0.73.0(zod@4.3.6)':
     dependencies:
       json-schema-to-ts: 3.1.1
@@ -2812,8 +2814,6 @@ snapshots:
       - encoding
       - supports-color
       - zod
-
-  '@attest-protocol/attest-ts@0.1.0': {}
 
   '@aws-crypto/crc32@5.2.0':
     dependencies:
