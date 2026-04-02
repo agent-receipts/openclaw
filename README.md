@@ -4,18 +4,18 @@
 
 ### Attest Protocol plugin for OpenClaw
 
-[![npm](https://img.shields.io/npm/v/@attest-protocol/openclaw-attest)](https://www.npmjs.com/package/@attest-protocol/openclaw-attest)
+[![npm](https://img.shields.io/npm/v/@agent-receipts/openclaw)](https://www.npmjs.com/package/@agent-receipts/openclaw)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-ESM-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![CI](https://github.com/attest-protocol/openclaw-attest/actions/workflows/ci.yml/badge.svg)](https://github.com/attest-protocol/openclaw-attest/actions/workflows/ci.yml)
+[![CI](https://github.com/agent-receipts/openclaw/actions/workflows/ci.yml/badge.svg)](https://github.com/agent-receipts/openclaw/actions/workflows/ci.yml)
 
 ---
 
 Cryptographically signed, hash-linked audit trail for every tool call an OpenClaw agent makes.
 
-Built on [`@attest-protocol/attest-ts`](https://github.com/attest-protocol/attest-ts) and [`@sinclair/typebox`](https://github.com/sinclairzx81/typebox).
+Built on [`@agent-receipts/sdk-ts`](https://github.com/agent-receipts/sdk-ts) and [`@sinclair/typebox`](https://github.com/sinclairzx81/typebox).
 
-[Spec](https://github.com/attest-protocol/spec) &bull; [TypeScript SDK](https://github.com/attest-protocol/attest-ts) &bull; [Python SDK](https://github.com/attest-protocol/attest-py)
+[Spec](https://github.com/agent-receipts/spec) &bull; [TypeScript SDK](https://github.com/agent-receipts/sdk-ts) &bull; [Python SDK](https://github.com/agent-receipts/sdk-py)
 
 </div>
 
@@ -71,13 +71,13 @@ AI agents that read files, run commands, and browse the web are powerful — but
 
 ### Beyond local storage
 
-Today, receipts are stored locally in SQLite — fully under your control. The [Attest Protocol](https://github.com/attest-protocol/spec) is designed for receipts to travel further when you choose: publishing to a shared ledger, forwarding to a compliance system, or exchanging with other agents as proof of prior actions. The receipts are portable W3C Verifiable Credentials, but where they go is always your decision.
+Today, receipts are stored locally in SQLite — fully under your control. The [Attest Protocol](https://github.com/agent-receipts/spec) is designed for receipts to travel further when you choose: publishing to a shared ledger, forwarding to a compliance system, or exchanging with other agents as proof of prior actions. The receipts are portable W3C Verifiable Credentials, but where they go is always your decision.
 
 ## How it works
 
 Every time the OpenClaw agent executes a tool, this plugin:
 
-1. **Classifies the action** using the [Attest Protocol taxonomy](https://github.com/attest-protocol/spec/tree/main/spec/taxonomy)
+1. **Classifies the action** using the [Attest Protocol taxonomy](https://github.com/agent-receipts/spec/tree/main/spec/taxonomy)
 2. **Creates a signed receipt** — a [W3C Verifiable Credential](https://www.w3.org/TR/vc-data-model-2.0/) with Ed25519 proof
 3. **Hash-links it** into a per-session chain (tamper-evident)
 4. **Stores it** in a local SQLite database
@@ -97,7 +97,7 @@ OpenClaw Gateway
 ## Install
 
 ```bash
-openclaw plugins install @attest-protocol/openclaw-attest
+openclaw plugins install @agent-receipts/openclaw
 ```
 
 Then enable the plugin in your OpenClaw config. See [`docs/INSTALL.md`](docs/INSTALL.md) for tool visibility setup and configuration options.
@@ -108,31 +108,31 @@ Query and verify receipts outside of agent sessions, useful for auditing and deb
 
 ```bash
 # Query all receipts
-npx @attest-protocol/openclaw-attest receipts
+npx @agent-receipts/openclaw receipts
 
 # Filter by risk level
-npx @attest-protocol/openclaw-attest receipts --risk high
+npx @agent-receipts/openclaw receipts --risk high
 
 # Filter by action type and output as JSON
-npx @attest-protocol/openclaw-attest receipts --action system.command.execute --json
+npx @agent-receipts/openclaw receipts --action system.command.execute --json
 
 # Verify all chains
-npx @attest-protocol/openclaw-attest verify
+npx @agent-receipts/openclaw verify
 
 # Verify a specific chain
-npx @attest-protocol/openclaw-attest verify --chain chain_openclaw_main_sid-42
+npx @agent-receipts/openclaw verify --chain chain_openclaw_main_sid-42
 
 # Export a chain as JSON-LD (full W3C Verifiable Credentials)
-npx @attest-protocol/openclaw-attest export --chain chain_openclaw_main_sid-42
+npx @agent-receipts/openclaw export --chain chain_openclaw_main_sid-42
 
 # Export as a W3C Verifiable Presentation envelope
-npx @attest-protocol/openclaw-attest export --chain chain_openclaw_main_sid-42 --format presentation
+npx @agent-receipts/openclaw export --chain chain_openclaw_main_sid-42 --format presentation
 
 # Export a single receipt by ID
-npx @attest-protocol/openclaw-attest export --id urn:receipt:abc-123
+npx @agent-receipts/openclaw export --id urn:receipt:abc-123
 ```
 
-Run `npx @attest-protocol/openclaw-attest --help` for all options including `--status`, `--limit`, and `--db`.
+Run `npx @agent-receipts/openclaw --help` for all options including `--status`, `--limit`, and `--db`.
 
 ## Agent tools
 
@@ -211,7 +211,7 @@ Ed25519 signing keys are generated automatically on first run and persisted to `
 ```
 src/
   index.ts          # Plugin entry — wires hooks, tools, service
-  cli.ts            # Receipt Explorer CLI (npx @attest-protocol/openclaw-attest)
+  cli.ts            # Receipt Explorer CLI (npx @agent-receipts/openclaw)
   hooks.ts          # before_tool_call / after_tool_call → receipt creation
   classify.ts       # Tool name → action type + risk level classification
   chain.ts          # Per-session hash-linked chain state
@@ -233,16 +233,16 @@ pnpm test:coverage     # with V8 coverage
 |:---|:---|
 | **Language** | TypeScript ESM, strict mode |
 | **Testing** | Vitest (colocated `*.test.ts` files) |
-| **Runtime deps** | `@attest-protocol/attest-ts` + `@sinclair/typebox` |
+| **Runtime deps** | `@agent-receipts/sdk-ts` + `@sinclair/typebox` |
 
 ## Ecosystem
 
 | Repository | Description |
 |:---|:---|
-| [attest-protocol/spec](https://github.com/attest-protocol/spec) | Protocol specification, JSON Schemas, canonical taxonomy |
-| [attest-protocol/attest-ts](https://github.com/attest-protocol/attest-ts) | TypeScript SDK |
-| [attest-protocol/attest-py](https://github.com/attest-protocol/attest-py) | Python SDK ([PyPI](https://pypi.org/project/attest-protocol/)) |
-| **attest-protocol/openclaw-attest** (this plugin) | OpenClaw integration |
+| [agent-receipts/spec](https://github.com/agent-receipts/spec) | Protocol specification, JSON Schemas, canonical taxonomy |
+| [agent-receipts/sdk-ts](https://github.com/agent-receipts/sdk-ts) | TypeScript SDK |
+| [agent-receipts/sdk-py](https://github.com/agent-receipts/sdk-py) | Python SDK ([PyPI](https://pypi.org/project/agent-receipts/)) |
+| **agent-receipts/openclaw** (this plugin) | OpenClaw integration |
 | [ojongerius/attest](https://github.com/ojongerius/attest) | MCP proxy + CLI (reference implementation) |
 
 ## License

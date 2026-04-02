@@ -48,6 +48,6 @@ CI runs typecheck + vitest + V8 coverage via GitHub Actions.
 
 ## Dependencies
 
-- `@attest-protocol/attest-ts` — Attest Protocol SDK (receipts, store, signing)
+- `@agent-receipts/sdk-ts` — Agent Receipts SDK (receipts, store, signing)
 - `@sinclair/typebox` — JSON schema for tool parameter validation
 - `openclaw` — peer dependency (`>=2025.0.0`)

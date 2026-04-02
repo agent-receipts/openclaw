@@ -1,5 +1,5 @@
 {
-  "name": "@attest-protocol/openclaw-attest",
+  "name": "@agent-receipts/openclaw",
   "version": "0.2.0",
   "description": "Cryptographically signed audit trail for OpenClaw agent actions via Attest Protocol",
   "type": "module",
@@ -7,11 +7,11 @@
   "author": "Otto Jongerius",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/attest-protocol/openclaw-attest.git"
+    "url": "git+https://github.com/agent-receipts/openclaw.git"
   },
   "keywords": [
     "openclaw",
-    "attest-protocol",
+    "agent-receipts",
     "audit-trail",
     "receipts",
     "verifiable-credentials",
@@ -38,7 +38,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@attest-protocol/attest-ts": "^0.1.0",
+    "@agent-receipts/sdk-ts": "^0.2.0",
     "@sinclair/typebox": "0.34.49"
   },
   "devDependencies": {

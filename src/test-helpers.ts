@@ -6,7 +6,7 @@ import {
   generateKeyPair,
   openStore,
   type ReceiptStore,
-} from "@attest-protocol/attest-ts";
+} from "@agent-receipts/sdk-ts";
 import { beforeToolCall, afterToolCall, type HookDeps, type PendingMap } from "./hooks.js";
 import { type ChainsMap, type ChainState } from "./chain.js";
 import { DEFAULT_MAPPINGS, DEFAULT_PATTERNS } from "./classify.js";

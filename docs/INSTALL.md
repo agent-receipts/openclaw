@@ -4,7 +4,7 @@
 
 ```bash
 # Install the plugin
-openclaw plugins install @attest-protocol/openclaw-attest
+openclaw plugins install @agent-receipts/openclaw
 
 # Or link a local clone for development
 openclaw plugins install /path/to/openclaw-attest --link
