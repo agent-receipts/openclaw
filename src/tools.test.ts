@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { openStore, type ReceiptStore } from "@agent-receipts/sdk-ts";
+import { openStore, type ReceiptStore } from "@agnt-rcpt/sdk-ts";
 import { createQueryReceiptsTool, createVerifyChainTool, createVerifyChainToolFactory } from "./tools.js";
 import { makeHookDeps, simulateToolCall } from "./test-helpers.js";
 import { getChainId } from "./chain.js";

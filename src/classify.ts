@@ -4,12 +4,12 @@ import {
   resolveActionType,
   type ClassificationResult,
   type TaxonomyMapping,
-} from "@agent-receipts/sdk-ts/taxonomy";
+} from "@agnt-rcpt/sdk-ts/taxonomy";
 
 // Default mappings bundled with the plugin
 import defaultTaxonomy from "../taxonomy.json" with { type: "json" };
 
-export { type TaxonomyMapping } from "@agent-receipts/sdk-ts/taxonomy";
+export { type TaxonomyMapping } from "@agnt-rcpt/sdk-ts/taxonomy";
 
 export interface TaxonomyPattern {
   prefix: string;

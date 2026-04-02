@@ -18,8 +18,8 @@ import { parseArgs } from "node:util";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
-import { openStore, verifyStoredChain } from "@agent-receipts/sdk-ts";
-import type { ActionReceipt, RiskLevel, OutcomeStatus, ReceiptStore, StoreStats } from "@agent-receipts/sdk-ts";
+import { openStore, verifyStoredChain } from "@agnt-rcpt/sdk-ts";
+import type { ActionReceipt, RiskLevel, OutcomeStatus, ReceiptStore, StoreStats } from "@agnt-rcpt/sdk-ts";
 
 // ---------------------------------------------------------------------------
 // Types

@@ -6,8 +6,8 @@
  */
 
 import { Type } from "@sinclair/typebox";
-import type { ReceiptStore, RiskLevel, OutcomeStatus } from "@agent-receipts/sdk-ts";
-import { verifyStoredChain } from "@agent-receipts/sdk-ts";
+import type { ReceiptStore, RiskLevel, OutcomeStatus } from "@agnt-rcpt/sdk-ts";
+import { verifyStoredChain } from "@agnt-rcpt/sdk-ts";
 
 const VALID_RISK_LEVELS = new Set<string>(["low", "medium", "high", "critical"]);
 const VALID_STATUSES = new Set<string>(["success", "failure", "pending"]);

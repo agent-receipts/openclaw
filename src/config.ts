@@ -1,6 +1,6 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { generateKeyPair, type KeyPair } from "@agent-receipts/sdk-ts";
+import { generateKeyPair, type KeyPair } from "@agnt-rcpt/sdk-ts";
 
 export type AttestPluginConfig = {
   dbPath?: string;

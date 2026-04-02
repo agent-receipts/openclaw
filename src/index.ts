@@ -9,7 +9,7 @@
 import { dirname } from "node:path";
 import { mkdirSync } from "node:fs";
 import { definePluginEntry } from "./openclaw-types.js";
-import { openStore } from "@agent-receipts/sdk-ts";
+import { openStore } from "@agnt-rcpt/sdk-ts";
 
 import { resolveConfig, loadOrCreateKeys } from "./config.js";
 import { loadCustomMappings, DEFAULT_MAPPINGS, DEFAULT_PATTERNS } from "./classify.js";
