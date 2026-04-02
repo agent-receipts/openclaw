@@ -1,5 +1,5 @@
 {
-  "name": "@agent-receipts/openclaw",
+  "name": "@agnt-rcpt/openclaw",
   "version": "0.2.0",
   "description": "Cryptographically signed audit trail for OpenClaw agent actions via Attest Protocol",
   "type": "module",

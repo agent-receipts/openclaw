@@ -18,17 +18,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
-      - run: npm install -g npm@latest
-
       - run: corepack enable && corepack prepare pnpm@10.33.0 --activate
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "24"
           cache: "pnpm"
           registry-url: "https://registry.npmjs.org"
 
