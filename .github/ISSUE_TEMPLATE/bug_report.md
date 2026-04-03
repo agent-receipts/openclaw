@@ -4,6 +4,10 @@ about: Report a bug in the OpenClaw plugin
 labels: bug
 ---
 
+> [!IMPORTANT]
+> If you believe you have found a security vulnerability, please do **not** report it here.
+> See [SECURITY.md](../../SECURITY.md) for private vulnerability reporting instructions.
+
 **Describe the bug**
 A clear description of what the bug is.
 
