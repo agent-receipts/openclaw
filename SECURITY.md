@@ -10,10 +10,7 @@
 
 **Do not report security vulnerabilities through public GitHub issues.**
 
-Instead, please use one of:
-
-- GitHub's **Report a vulnerability** feature on this repository
-- Email: security@agentreceipts.ai
+Instead, please use GitHub's **Report a vulnerability** feature on this repository.
 
 Include as much detail as possible: description, steps to reproduce, impact assessment, and any suggested fix.
 
