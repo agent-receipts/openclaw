@@ -29,6 +29,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Shellcheck
+        run: find . -name '*.sh' -not -path './.git/*' -not -path './node_modules/*' -print0 | xargs -0 --no-run-if-empty shellcheck
+
       - run: pnpm run typecheck
 
       - run: pnpm test

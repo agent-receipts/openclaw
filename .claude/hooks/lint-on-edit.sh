@@ -16,7 +16,14 @@ if [ -z "$FILE_PATH" ]; then
   exit 0
 fi
 
-if [[ "$FILE_PATH" == *.ts || "$FILE_PATH" == *.js ]]; then
+if [[ "$FILE_PATH" == *.sh ]]; then
+  cd "${CLAUDE_PROJECT_DIR:-.}"
+  if command -v shellcheck >/dev/null 2>&1; then
+    shellcheck "$FILE_PATH" >&2 || { echo "shellcheck: $FILE_PATH has issues" >&2; exit 2; }
+  else
+    echo "lint-on-edit: shellcheck not installed; skipping lint for $FILE_PATH" >&2
+  fi
+elif [[ "$FILE_PATH" == *.ts || "$FILE_PATH" == *.js ]]; then
   cd "${CLAUDE_PROJECT_DIR:-.}"
   if pnpm exec biome --version >/dev/null 2>&1; then
     pnpm exec biome check "$FILE_PATH" >&2 || { echo "biome: $FILE_PATH has issues" >&2; exit 2; }
