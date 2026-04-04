@@ -1,0 +1,53 @@
+name: Bug report
+description: Report a bug in the OpenClaw plugin
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > **Important**: If you believe you have found a security vulnerability, please do **not** report it here.
+        > See [SECURITY.md](https://github.com/agent-receipts/openclaw/blob/main/SECURITY.md) for private vulnerability reporting instructions.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: A clear description of what the bug is.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Steps to reproduce the behavior.
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened. Include error messages or logs if applicable.
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Provide details about your environment.
+      placeholder: |
+        OS:
+        Node.js version:
+        OpenClaw version:
+        Plugin version:
