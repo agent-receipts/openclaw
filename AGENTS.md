@@ -46,6 +46,13 @@ CI runs typecheck + vitest + V8 coverage via GitHub Actions.
 - Shared helpers in `src/test-helpers.ts`
 - Tests must pass before merging: `pnpm test && pnpm typecheck`
 
+## Reference files
+
+- `src/hooks.ts` — lifecycle hook pattern: dependency injection via `HookDeps`, no module-level state, memory leak prevention
+- `src/classify.test.ts` — taxonomy test structure: exact mappings, custom overrides, pattern precedence, edge cases with temp directory isolation
+- `src/integration.test.ts` — full plugin lifecycle test: mock API setup, multi-step tool call flow, receipt and chain verification
+- `src/test-helpers.ts` — test fixture factories: `makeHookDeps()` for isolated state, `simulateToolCall()` for multi-step helpers
+
 ## Dependencies
 
 - `@agnt-rcpt/sdk-ts` — Agent Receipts SDK (receipts, store, signing)
