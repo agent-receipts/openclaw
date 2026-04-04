@@ -51,6 +51,18 @@ Adding mappings for new OpenClaw tools is a great way to contribute. Edit `taxon
 
 This plugin implements the [Action Receipt Protocol](https://github.com/agent-receipts/spec) via the `@agnt-rcpt/sdk-ts` SDK. Changes must remain compatible with the protocol specification.
 
+## Working with AI agents
+
+AI agents (Claude Code, GitHub Copilot, etc.) are first-class contributors to this project. See [AGENTS.md](AGENTS.md) for the full agent safety rules and conventions.
+
+**Test-driven workflow** — the highest-leverage pattern for agent-assisted development:
+
+1. Write a failing test that describes the expected behavior.
+2. Let the agent implement the fix or feature to make the test pass.
+3. The test output gives the agent a tight feedback loop — it can iterate without guessing.
+
+**Agent boundaries** — agents must follow the [Agent safety rules](AGENTS.md#agent-safety-rules). Key constraints: no `openclaw.plugin.json` changes without human approval, no CI/CD workflow changes without explicit human review, no real cryptographic keys.
+
 ## Pre-submit checklist
 
 Before opening a PR, verify:
