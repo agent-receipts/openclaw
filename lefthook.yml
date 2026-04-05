@@ -6,14 +6,14 @@ pre-commit:
   parallel: true
   jobs:
     - name: typecheck
-      glob: "*.{ts,tsx}"
+      glob: "*.{ts,tsx,json}"
       run: pnpm run typecheck
 
     - name: test
-      glob: "*.{ts,tsx}"
+      glob: "*.{ts,tsx,json}"
       run: pnpm test
 
 commit-msg:
   commands:
     conventional-commit:
-      run: convco check --from-stdin < {1}
+      run: convco check --from-stdin < "{1}"
