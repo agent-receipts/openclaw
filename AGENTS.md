@@ -64,6 +64,7 @@ CI runs typecheck + vitest + V8 coverage via GitHub Actions.
 - Never commit real private keys. Test fixtures use well-known test keys only (see `src/test-helpers.ts`).
 - Parameters are never stored in plaintext — only SHA-256 hashes appear in receipts. Do not weaken this.
 - Ed25519 is the only supported signing algorithm. Do not introduce alternative or weaker schemes.
+- Validate all inputs at trust boundaries (function parameters, environment variables, stored data). Crypto code must reject invalid inputs explicitly, not silently degrade.
 - Report vulnerabilities via [GitHub Security Advisories](https://github.com/agent-receipts/openclaw/security/advisories/new), not public issues. See [SECURITY.md](SECURITY.md).
 
 ## Mindset
@@ -117,4 +118,5 @@ When working in this repo as an AI coding agent, these rules apply in addition t
 - **Always run `pnpm test && pnpm run typecheck`** before proposing changes
 - **Taxonomy changes** (`taxonomy.json`) must include corresponding test updates in `src/classify.test.ts`
 - **Use git worktrees** for new work — do not edit directly on main or shared branches, to avoid conflicts with other agents or in-progress work
+- **Write tests first** — new functions must have test coverage before pushing; writing tests first forces you to think about edge cases (nil inputs, corruption, concurrency)
 - **Self-review before committing** — follow the Completing work checklist above
