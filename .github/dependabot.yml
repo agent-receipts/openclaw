@@ -5,7 +5,7 @@ updates:
     schedule:
       interval: weekly
     groups:
-      npm_and_yarn:
+      node-deps:
         patterns:
           - "*"
 
