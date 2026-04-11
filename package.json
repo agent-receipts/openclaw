@@ -45,8 +45,8 @@
     "@types/node": "^25.5.0",
     "@vitest/coverage-v8": "^4.1.2",
     "openclaw": "*",
-    "typescript": "^5.7.0",
-    "vitest": "^3.1.0"
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.4"
   },
   "peerDependencies": {
     "openclaw": ">=2025.0.0"
