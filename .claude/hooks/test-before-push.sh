@@ -11,6 +11,13 @@ fail() {
 
 trap 'fail "Hook failed unexpectedly — fix before pushing."' ERR
 
+# Only run for git push commands.
+input=$(cat)
+command=$(printf '%s' "$input" | jq -r '.command // empty' 2>/dev/null || printf '')
+if [[ -z "$command" ]] || [[ "$command" != git\ push* ]]; then
+  exit 0
+fi
+
 cd "${CLAUDE_PROJECT_DIR:-.}" || fail "Failed to enter project directory."
 
 echo "Running typecheck..." >&2
