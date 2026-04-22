@@ -31,6 +31,9 @@
     "taxonomy.json",
     "openclaw.plugin.json"
   ],
+  "engines": {
+    "node": ">=22.11.0"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run",
@@ -38,7 +41,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@agnt-rcpt/sdk-ts": "^0.3.0",
+    "@agnt-rcpt/sdk-ts": "^0.4.0",
     "@sinclair/typebox": "0.34.49"
   },
   "devDependencies": {
