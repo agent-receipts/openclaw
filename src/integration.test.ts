@@ -11,7 +11,7 @@ import { mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
-import { openStore, verifyChain } from "@agnt-rcpt/sdk-ts";
+import { openStore } from "@agnt-rcpt/sdk-ts";
 import type { OpenClawPluginApi } from "./openclaw-types.js";
 import plugin from "./index.js";
 
