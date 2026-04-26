@@ -139,7 +139,7 @@ export async function afterToolCall(
     },
     outcome: {
       status,
-      error: event.error ?? null,
+      ...(event.error !== undefined ? { error: event.error } : {}),
     },
     chain: {
       sequence: nextSequence,
