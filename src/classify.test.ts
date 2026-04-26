@@ -250,6 +250,62 @@ describe("loadCustomMappings", () => {
     const defaultResult = classify("read_file", merged.mappings, merged.patterns);
     expect(defaultResult.action_type).toBe("filesystem.file.read");
   });
+
+  it("custom mappings with preview_fields survive merge and are returned by classify", () => {
+    tempDir = join(tmpdir(), `ar-taxonomy-${randomUUID()}`);
+    mkdirSync(tempDir, { recursive: true });
+    const taxPath = join(tempDir, "taxonomy.json");
+
+    writeFileSync(taxPath, JSON.stringify({
+      mappings: [
+        { tool_name: "my_exec", action_type: "system.command.execute", preview_fields: ["cmd", "args"] },
+      ],
+    }));
+
+    const merged = loadCustomMappings(taxPath);
+    const result = classify("my_exec", merged.mappings, merged.patterns);
+
+    expect(result.action_type).toBe("system.command.execute");
+    expect(result.preview_fields).toEqual(["cmd", "args"]);
+  });
+
+  it("custom override of default mapping preserves preview_fields from custom entry", () => {
+    tempDir = join(tmpdir(), `ar-taxonomy-${randomUUID()}`);
+    mkdirSync(tempDir, { recursive: true });
+    const taxPath = join(tempDir, "taxonomy.json");
+
+    // Override bash with a different preview_fields list
+    writeFileSync(taxPath, JSON.stringify({
+      mappings: [
+        { tool_name: "bash", action_type: "system.command.execute", preview_fields: ["script"] },
+      ],
+    }));
+
+    const merged = loadCustomMappings(taxPath);
+    const result = classify("bash", merged.mappings, merged.patterns);
+
+    expect(result.action_type).toBe("system.command.execute");
+    expect(result.preview_fields).toEqual(["script"]);
+  });
+
+  it("custom override with no preview_fields removes preview from previously configured tool", () => {
+    tempDir = join(tmpdir(), `ar-taxonomy-${randomUUID()}`);
+    mkdirSync(tempDir, { recursive: true });
+    const taxPath = join(tempDir, "taxonomy.json");
+
+    // Override bash without preview_fields
+    writeFileSync(taxPath, JSON.stringify({
+      mappings: [
+        { tool_name: "bash", action_type: "system.command.execute" },
+      ],
+    }));
+
+    const merged = loadCustomMappings(taxPath);
+    const result = classify("bash", merged.mappings, merged.patterns);
+
+    expect(result.action_type).toBe("system.command.execute");
+    expect(result.preview_fields).toBeUndefined();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -314,5 +370,51 @@ describe("classify with patterns", () => {
   it("works without patterns (backward compatible)", () => {
     const result = classify("browser_new_tool", DEFAULT_MAPPINGS);
     expect(result.action_type).toBe("unknown");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// preview_fields in classification results
+// ---------------------------------------------------------------------------
+
+describe("classify preview_fields", () => {
+  it("returns preview_fields for bash", () => {
+    const result = classify("bash", DEFAULT_MAPPINGS);
+    expect(result.preview_fields).toEqual(["command", "cmd", "script"]);
+  });
+
+  it("returns preview_fields for run_command", () => {
+    const result = classify("run_command", DEFAULT_MAPPINGS);
+    expect(result.preview_fields).toEqual(["command", "cmd"]);
+  });
+
+  it("returns preview_fields for read_file", () => {
+    const result = classify("read_file", DEFAULT_MAPPINGS);
+    expect(result.preview_fields).toEqual(["path", "file_path", "filename"]);
+  });
+
+  it("returns preview_fields for read", () => {
+    const result = classify("read", DEFAULT_MAPPINGS);
+    expect(result.preview_fields).toEqual(["path", "file_path"]);
+  });
+
+  it("returns preview_fields for web_fetch", () => {
+    const result = classify("web_fetch", DEFAULT_MAPPINGS);
+    expect(result.preview_fields).toEqual(["url"]);
+  });
+
+  it("returns no preview_fields for tools without preview config", () => {
+    const result = classify("edit_file", DEFAULT_MAPPINGS);
+    expect(result.preview_fields).toBeUndefined();
+  });
+
+  it("returns no preview_fields for unknown tools", () => {
+    const result = classify("totally_unknown_tool", DEFAULT_MAPPINGS);
+    expect(result.preview_fields).toBeUndefined();
+  });
+
+  it("returns no preview_fields for pattern-matched tools", () => {
+    const result = classify("browser_custom_thing", DEFAULT_MAPPINGS, DEFAULT_PATTERNS);
+    expect(result.preview_fields).toBeUndefined();
   });
 });

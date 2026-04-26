@@ -24,6 +24,14 @@
       "enabled": {
         "type": "boolean",
         "default": true
+      },
+      "parameterPreview": {
+        "oneOf": [
+          { "type": "boolean" },
+          { "type": "string", "enum": ["high"] },
+          { "type": "array", "items": { "type": "string" } }
+        ],
+        "description": "Selectively disclose action parameters in receipts"
       }
     }
   },
@@ -46,6 +54,10 @@
     "enabled": {
       "label": "Enable Attestations",
       "help": "Generate signed receipts for every tool call"
+    },
+    "parameterPreview": {
+      "label": "Parameter Preview",
+      "help": "Disclose specific action parameters in receipts. false = hashes only (default), true = all, \"high\" = high-risk only, or an array of action type strings. Listed fields are stored verbatim — do not list fields that may contain secrets."
     }
   }
 }

@@ -16,8 +16,18 @@ export interface TaxonomyPattern {
   action_type: string;
 }
 
+/** Extends the SDK's TaxonomyMapping with optional preview field names. */
+export interface ExtendedTaxonomyMapping extends TaxonomyMapping {
+  preview_fields?: string[];
+}
+
+/** Extends ClassificationResult with preview field names from the matched mapping. */
+export interface ExtendedClassificationResult extends ClassificationResult {
+  preview_fields?: string[];
+}
+
 /** The bundled default mappings, exported for use when no custom taxonomy is configured. */
-export const DEFAULT_MAPPINGS: TaxonomyMapping[] = defaultTaxonomy.mappings;
+export const DEFAULT_MAPPINGS: ExtendedTaxonomyMapping[] = defaultTaxonomy.mappings;
 
 /** The bundled default patterns, exported for use when no custom taxonomy is configured. */
 export const DEFAULT_PATTERNS: TaxonomyPattern[] = defaultTaxonomy.patterns;
@@ -28,9 +38,9 @@ export const DEFAULT_PATTERNS: TaxonomyPattern[] = defaultTaxonomy.patterns;
  *
  * Pure function — returns the merged result without side effects.
  */
-export function loadCustomMappings(filePath: string): { mappings: TaxonomyMapping[]; patterns: TaxonomyPattern[] } {
+export function loadCustomMappings(filePath: string): { mappings: ExtendedTaxonomyMapping[]; patterns: TaxonomyPattern[] } {
   const raw = readFileSync(filePath, "utf-8");
-  const parsed = JSON.parse(raw) as { mappings?: TaxonomyMapping[]; patterns?: TaxonomyPattern[] };
+  const parsed = JSON.parse(raw) as { mappings?: ExtendedTaxonomyMapping[]; patterns?: TaxonomyPattern[] };
 
   const customMappings = parsed.mappings ?? [];
   const customByName = new Map(
@@ -38,9 +48,9 @@ export function loadCustomMappings(filePath: string): { mappings: TaxonomyMappin
   );
 
   // Merge mappings: custom overrides defaults
-  const mappings = [
+  const mappings: ExtendedTaxonomyMapping[] = [
     ...customMappings,
-    ...defaultTaxonomy.mappings.filter((m: TaxonomyMapping) => !customByName.has(m.tool_name)),
+    ...defaultTaxonomy.mappings.filter((m: ExtendedTaxonomyMapping) => !customByName.has(m.tool_name)),
   ];
 
   // Merge patterns: custom overrides defaults by prefix
@@ -56,17 +66,21 @@ export function loadCustomMappings(filePath: string): { mappings: TaxonomyMappin
 
 /**
  * Classify an OpenClaw tool call into an sdk-ts action type and risk level.
+ * Returns preview_fields from the matched mapping entry if present.
  *
  * Lookup order: exact match → prefix pattern → unknown.
  */
 export function classify(
   toolName: string,
-  mappings: TaxonomyMapping[],
+  mappings: ExtendedTaxonomyMapping[],
   patterns: TaxonomyPattern[] = [],
-): ClassificationResult {
+): ExtendedClassificationResult {
   // 1. Try exact match
   const exact = classifyToolCall(toolName, mappings);
-  if (exact.action_type !== "unknown") return exact;
+  if (exact.action_type !== "unknown") {
+    const matched = mappings.find((m) => m.tool_name === toolName);
+    return { ...exact, preview_fields: matched?.preview_fields };
+  }
 
   // 2. Try prefix patterns (first match wins, order matters)
   for (const p of patterns) {

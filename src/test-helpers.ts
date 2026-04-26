@@ -10,13 +10,17 @@ import {
 import { beforeToolCall, afterToolCall, type HookDeps, type PendingMap } from "./hooks.js";
 import { type ChainsMap, type ChainState } from "./chain.js";
 import { DEFAULT_MAPPINGS, DEFAULT_PATTERNS } from "./classify.js";
+import type { ParameterPreviewConfig } from "./config.js";
 
 /**
  * Create HookDeps with generated keys, in-memory store, and isolated state.
  * Each call creates fresh chains/pending — no shared module state.
  * Mappings use the shared immutable DEFAULT_MAPPINGS.
  */
-export function makeHookDeps(store?: ReceiptStore): HookDeps & {
+export function makeHookDeps(
+  store?: ReceiptStore,
+  overrides?: { parameterPreview?: ParameterPreviewConfig },
+): HookDeps & {
   publicKey: string;
   store: ReceiptStore;
 } {
@@ -38,6 +42,7 @@ export function makeHookDeps(store?: ReceiptStore): HookDeps & {
     pending,
     mappings: DEFAULT_MAPPINGS,
     patterns: DEFAULT_PATTERNS,
+    ...overrides,
   };
 }
 

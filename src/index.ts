@@ -64,6 +64,7 @@ export default definePluginEntry({
       chains,
       mappings,
       patterns,
+      parameterPreview: cfg.parameterPreview,
     };
 
     // --- Hooks ---

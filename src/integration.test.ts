@@ -11,8 +11,12 @@ import { mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
+import { openStore } from "@agnt-rcpt/sdk-ts";
 import type { OpenClawPluginApi } from "./openclaw-types.js";
 import plugin from "./index.js";
+
+// Local extension until sdk-ts@0.5.0 adds parameters_preview to Action.
+type ActionWithPreview = { parameters_preview?: Record<string, string> };
 
 // ---- Mock OpenClawPluginApi ----
 
@@ -277,5 +281,137 @@ describe("integration: full plugin lifecycle", () => {
     expect(data.results[0].status).toBe("failure");
     expect(data.results[0].action).toBe("system.command.execute");
     expect(data.results[0].risk).toBe("high");
+  });
+
+  describe("parameter preview", () => {
+    it("parameterPreview: 'high' adds parameters_preview to high-risk receipts but not low-risk", async () => {
+      const { hooks, tools } = setupPlugin({ parameterPreview: "high" });
+      const sessionCtx = { sessionKey: "preview-high", sessionId: "sid-ph" };
+
+      await fireHook(hooks, "session_start", {}, sessionCtx);
+
+      // bash = system.command.execute (high risk) — should have preview
+      const bashCall = { toolName: "bash", params: { command: "ls -la" }, runId: "run-p", toolCallId: "tc-bash" };
+      await fireHook(hooks, "before_tool_call", bashCall, sessionCtx);
+      await fireHook(hooks, "after_tool_call", { ...bashCall, result: { ok: true } }, sessionCtx);
+
+      // read_file = filesystem.file.read (low risk) — should NOT have preview
+      const readCall = { toolName: "read_file", params: { path: "/secret.txt" }, runId: "run-p", toolCallId: "tc-read" };
+      await fireHook(hooks, "before_tool_call", readCall, sessionCtx);
+      await fireHook(hooks, "after_tool_call", { ...readCall, result: { ok: true } }, sessionCtx);
+
+      // Open a second store connection to read raw receipts (SQLite allows concurrent readers)
+      const readStore = openStore(join(tempDir, "receipts.db"));
+      try {
+        const chain = readStore.getChain("chain_openclaw_preview-high_sid-ph");
+        expect(chain).toHaveLength(2);
+
+        // bash receipt (high risk) should have parameters_preview with first matching field
+        const bashAction = chain[0]!.credentialSubject.action as typeof chain[0]["credentialSubject"]["action"] & ActionWithPreview;
+        expect(bashAction.parameters_preview).toEqual({ command: "ls -la" });
+
+        // read_file receipt (low risk) should NOT have parameters_preview
+        const readAction = chain[1]!.credentialSubject.action as typeof chain[1]["credentialSubject"]["action"] & ActionWithPreview;
+        expect(readAction.parameters_preview).toBeUndefined();
+
+        // Chain must still be cryptographically valid with parameters_preview present
+        const verifyFactory = tools.get("ar_verify_chain")!.factory!;
+        const verifyResult = await verifyFactory(sessionCtx).execute("v", {});
+        const verifyData = JSON.parse(verifyResult.content[1].text);
+        expect(verifyData.valid).toBe(true);
+        for (const r of verifyData.receipts) {
+          expect(r.signature_valid).toBe(true);
+          expect(r.hash_link_valid).toBe(true);
+        }
+      } finally {
+        readStore.close();
+      }
+    });
+
+    it("parameterPreview: false (default) adds no parameters_preview to any receipt", async () => {
+      const { hooks } = setupPlugin({ parameterPreview: false });
+      const sessionCtx = { sessionKey: "no-preview", sessionId: "sid-np" };
+
+      await fireHook(hooks, "session_start", {}, sessionCtx);
+
+      const bashCall = { toolName: "bash", params: { command: "rm -rf /tmp/test" }, runId: "run-np", toolCallId: "tc-bash-np" };
+      await fireHook(hooks, "before_tool_call", bashCall, sessionCtx);
+      await fireHook(hooks, "after_tool_call", { ...bashCall, result: { ok: true } }, sessionCtx);
+
+      const readStore = openStore(join(tempDir, "receipts.db"));
+      try {
+        const chain = readStore.getChain("chain_openclaw_no-preview_sid-np");
+        expect(chain).toHaveLength(1);
+
+        const action = chain[0]!.credentialSubject.action as typeof chain[0]["credentialSubject"]["action"] & ActionWithPreview;
+        expect(action.parameters_preview).toBeUndefined();
+      } finally {
+        readStore.close();
+      }
+    });
+
+    it("parameterPreview: true adds parameters_preview to all receipts including low-risk, but omits it when no preview_fields configured", async () => {
+      const { hooks } = setupPlugin({ parameterPreview: true });
+      const sessionCtx = { sessionKey: "preview-all", sessionId: "sid-pa" };
+
+      await fireHook(hooks, "session_start", {}, sessionCtx);
+
+      // read_file has preview_fields configured — should produce preview
+      const readCall = { toolName: "read_file", params: { path: "/docs/readme.md" }, runId: "run-a", toolCallId: "tc-read-a" };
+      await fireHook(hooks, "before_tool_call", readCall, sessionCtx);
+      await fireHook(hooks, "after_tool_call", { ...readCall, result: { ok: true } }, sessionCtx);
+
+      // edit_file has no preview_fields — should produce no preview even with parameterPreview: true
+      const editCall = { toolName: "edit_file", params: { path: "/docs/readme.md", content: "..." }, runId: "run-a", toolCallId: "tc-edit-a" };
+      await fireHook(hooks, "before_tool_call", editCall, sessionCtx);
+      await fireHook(hooks, "after_tool_call", { ...editCall, result: { ok: true } }, sessionCtx);
+
+      const readStore = openStore(join(tempDir, "receipts.db"));
+      try {
+        const chain = readStore.getChain("chain_openclaw_preview-all_sid-pa");
+        expect(chain).toHaveLength(2);
+
+        // read_file previews path (first of ["path", "file_path", "filename"])
+        const readAction = chain[0]!.credentialSubject.action as typeof chain[0]["credentialSubject"]["action"] & ActionWithPreview;
+        expect(readAction.parameters_preview).toEqual({ path: "/docs/readme.md" });
+
+        // edit_file has no preview_fields in taxonomy — no parameters_preview
+        const editAction = chain[1]!.credentialSubject.action as typeof chain[1]["credentialSubject"]["action"] & ActionWithPreview;
+        expect(editAction.parameters_preview).toBeUndefined();
+      } finally {
+        readStore.close();
+      }
+    });
+
+    it("parameterPreview: string[] adds parameters_preview only for matching action types", async () => {
+      const { hooks } = setupPlugin({ parameterPreview: ["system.command.execute"] });
+      const sessionCtx = { sessionKey: "preview-arr", sessionId: "sid-arr" };
+
+      await fireHook(hooks, "session_start", {}, sessionCtx);
+
+      // bash matches the allowlist
+      const bashCall = { toolName: "bash", params: { command: "echo hello" }, runId: "run-arr", toolCallId: "tc-bash-arr" };
+      await fireHook(hooks, "before_tool_call", bashCall, sessionCtx);
+      await fireHook(hooks, "after_tool_call", { ...bashCall, result: { ok: true } }, sessionCtx);
+
+      // read_file does not match
+      const readCall = { toolName: "read_file", params: { path: "/file.txt" }, runId: "run-arr", toolCallId: "tc-read-arr" };
+      await fireHook(hooks, "before_tool_call", readCall, sessionCtx);
+      await fireHook(hooks, "after_tool_call", { ...readCall, result: { ok: true } }, sessionCtx);
+
+      const readStore = openStore(join(tempDir, "receipts.db"));
+      try {
+        const chain = readStore.getChain("chain_openclaw_preview-arr_sid-arr");
+        expect(chain).toHaveLength(2);
+
+        const bashAction = chain[0]!.credentialSubject.action as typeof chain[0]["credentialSubject"]["action"] & ActionWithPreview;
+        expect(bashAction.parameters_preview).toEqual({ command: "echo hello" });
+
+        const readAction = chain[1]!.credentialSubject.action as typeof chain[1]["credentialSubject"]["action"] & ActionWithPreview;
+        expect(readAction.parameters_preview).toBeUndefined();
+      } finally {
+        readStore.close();
+      }
+    });
   });
 });

@@ -37,7 +37,7 @@ CI runs typecheck + vitest + V8 coverage via GitHub Actions.
 - **Factory pattern for tools** — tool factories receive deps at registration time
 - **No module-level mutable state** — all mutable state flows through `HookDeps` (multi-instance safe)
 - **`taxonomy.json` is canonical** — tool classification comes from this file; custom taxonomies can override via config
-- **Parameters are never stored plaintext** — only SHA-256 hashes in receipts
+- **Parameters are never stored plaintext by default** — only SHA-256 hashes in receipts. When `parameterPreview` is explicitly enabled, named fields are stored verbatim alongside the hash — this is an opt-in disclosure, not a default.
 
 ## Testing
 
@@ -62,7 +62,7 @@ CI runs typecheck + vitest + V8 coverage via GitHub Actions.
 ## Security
 
 - Never commit real private keys. Test fixtures use well-known test keys only (see `src/test-helpers.ts`).
-- Parameters are never stored in plaintext — only SHA-256 hashes appear in receipts. Do not weaken this.
+- Parameters are never stored in plaintext by default — only SHA-256 hashes appear in receipts. The `parameterPreview` config is an explicit opt-in that stores named fields verbatim; do not enable it implicitly or broaden its scope.
 - Ed25519 is the only supported signing algorithm. Do not introduce alternative or weaker schemes.
 - Validate all inputs at trust boundaries (function parameters, environment variables, stored data). Crypto code must reject invalid inputs explicitly, not silently degrade.
 - Report vulnerabilities via [GitHub Security Advisories](https://github.com/agent-receipts/openclaw/security/advisories/new), not public issues. See [SECURITY.md](SECURITY.md).

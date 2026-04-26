@@ -14,12 +14,13 @@ import {
   hashReceipt,
   canonicalize,
   sha256,
+  type Action,
   type ReceiptStore,
 } from "@agnt-rcpt/sdk-ts";
-import type { TaxonomyMapping } from "@agnt-rcpt/sdk-ts/taxonomy";
 
-import { classify, type TaxonomyPattern } from "./classify.js";
+import { classify, type ExtendedTaxonomyMapping, type TaxonomyPattern } from "./classify.js";
 import { type ChainsMap, getChainState, advanceChain } from "./chain.js";
+import type { ParameterPreviewConfig } from "./config.js";
 
 export type PendingCall = {
   toolName: string;
@@ -45,9 +46,43 @@ export type HookDeps = {
   logger: { info: (msg: string) => void; warn: (msg: string) => void };
   pending: PendingMap;
   chains: ChainsMap;
-  mappings: TaxonomyMapping[];
+  mappings: ExtendedTaxonomyMapping[];
   patterns: TaxonomyPattern[];
+  parameterPreview?: ParameterPreviewConfig;
 };
+
+// sdk-ts@0.5.0 will add parameters_preview to Action; this local bridge can be removed then.
+type ActionWithPreview = Omit<Action, "id" | "timestamp"> & {
+  parameters_preview?: Record<string, string>;
+};
+
+export function shouldPreview(
+  config: ParameterPreviewConfig | undefined,
+  riskLevel: string,
+  actionType: string,
+): boolean {
+  if (!config) return false;
+  if (config === true) return true;
+  if (config === "high") return riskLevel === "high" || riskLevel === "critical";
+  if (Array.isArray(config)) return config.includes(actionType);
+  return false;
+}
+
+export function extractPreview(
+  params: Record<string, unknown>,
+  fields: string[],
+): Record<string, string> | undefined {
+  for (const field of fields) {
+    const val = params[field];
+    if (val !== null && val !== undefined) {
+      const serialized = typeof val === "string" ? val : JSON.stringify(val);
+      if (serialized !== undefined) {
+        return { [field]: serialized };
+      }
+    }
+  }
+  return undefined;
+}
 
 /**
  * Evict stale entries from the pending map to prevent memory leaks
@@ -120,6 +155,15 @@ export async function afterToolCall(
   // Classify the tool call
   const classification = classify(event.toolName, deps.mappings, deps.patterns);
 
+  // Optionally extract a preview of named parameters (plaintext, opt-in only).
+  // Use stashed params so preview and hash are derived from the same source.
+  const previewParams = stashed?.params ?? event.params;
+  const preview =
+    shouldPreview(deps.parameterPreview, classification.risk_level, classification.action_type) &&
+    classification.preview_fields?.length
+      ? extractPreview(previewParams, classification.preview_fields)
+      : undefined;
+
   // Get chain state and advance sequence
   const chain = getChainState(deps.chains, sessionKey, sessionId);
   const nextSequence = chain.sequence + 1;
@@ -127,16 +171,19 @@ export async function afterToolCall(
   // Determine outcome
   const status = event.error ? "failure" as const : "success" as const;
 
+  const action: ActionWithPreview = {
+    type: classification.action_type,
+    risk_level: classification.risk_level,
+    target: { system: "openclaw", resource: event.toolName },
+    parameters_hash: stashed?.paramsHash ?? sha256(canonicalize(event.params)),
+    ...(preview !== undefined ? { parameters_preview: preview } : {}),
+  };
+
   // Build the unsigned receipt
   const unsigned = createReceipt({
     issuer: { id: `did:openclaw:${deps.agentId}` },
     principal: { id: `did:session:${sessionKey}` },
-    action: {
-      type: classification.action_type,
-      risk_level: classification.risk_level,
-      target: { system: "openclaw", resource: event.toolName },
-      parameters_hash: stashed?.paramsHash ?? sha256(canonicalize(event.params)),
-    },
+    action,
     outcome: {
       status,
       // Omit `error` when absent — RFC 8785 canonicalize rejects undefined values,
