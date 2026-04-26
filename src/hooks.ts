@@ -155,11 +155,13 @@ export async function afterToolCall(
   // Classify the tool call
   const classification = classify(event.toolName, deps.mappings, deps.patterns);
 
-  // Optionally extract a preview of named parameters (plaintext, opt-in only)
+  // Optionally extract a preview of named parameters (plaintext, opt-in only).
+  // Use stashed params so preview and hash are derived from the same source.
+  const previewParams = stashed?.params ?? event.params;
   const preview =
     shouldPreview(deps.parameterPreview, classification.risk_level, classification.action_type) &&
     classification.preview_fields?.length
-      ? extractPreview(event.params, classification.preview_fields)
+      ? extractPreview(previewParams, classification.preview_fields)
       : undefined;
 
   // Get chain state and advance sequence
