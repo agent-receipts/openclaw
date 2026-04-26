@@ -1,6 +1,6 @@
 {
   "name": "@agnt-rcpt/openclaw",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Cryptographically signed audit trail for OpenClaw agent actions via Agent Receipts",
   "type": "module",
   "license": "MIT",
