@@ -16,7 +16,6 @@
 
 import { parseArgs } from "node:util";
 import { resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
 import { openStore, verifyStoredChain } from "@agnt-rcpt/sdk-ts";
 import type { ActionReceipt, RiskLevel, OutcomeStatus, ReceiptStore, StoreStats } from "@agnt-rcpt/sdk-ts";
@@ -565,16 +564,9 @@ export function run(argv: string[]): void {
   }
 }
 
-// Entry point when run as a script
-const isDirectRun =
-  process.argv[1] &&
-  fileURLToPath(import.meta.url) === resolve(process.argv[1]);
-
-if (isDirectRun) {
-  try {
-    run(process.argv.slice(2));
-  } catch (err) {
-    process.stderr.write(`Error: ${err instanceof Error ? err.message : String(err)}\n`);
-    process.exitCode = 1;
-  }
+try {
+  run(process.argv.slice(2));
+} catch (err) {
+  process.stderr.write(`Error: ${err instanceof Error ? err.message : String(err)}\n`);
+  process.exitCode = 1;
 }
