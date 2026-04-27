@@ -38,11 +38,11 @@ After a session where the agent reads files, runs a command, browses a page, and
     "system.browser.navigate": 1
   },
   "results": [
-    { "id": "rec-…01", "timestamp": "2026-04-01T02:10:01Z", "action": "filesystem.file.read",    "risk": "low",  "target": "read_file",        "status": "success", "sequence": 1 },
-    { "id": "rec-…02", "timestamp": "2026-04-01T02:10:02Z", "action": "filesystem.file.read",    "risk": "low",  "target": "read_file",        "status": "failure", "sequence": 2 },
-    { "id": "rec-…03", "timestamp": "2026-04-01T02:10:03Z", "action": "system.command.execute",  "risk": "high", "target": "run_command",      "status": "success", "sequence": 3 },
-    { "id": "rec-…04", "timestamp": "2026-04-01T02:10:04Z", "action": "system.browser.navigate", "risk": "low",  "target": "browser_navigate", "status": "success", "sequence": 4 },
-    { "id": "rec-…05", "timestamp": "2026-04-01T02:10:05Z", "action": "filesystem.file.create",  "risk": "low",  "target": "write_file",       "status": "success", "sequence": 5 }
+    { "id": "rec-’01", "timestamp": "2026-04-01T02:10:01Z", "action": "filesystem.file.read",    "risk": "low",  "target": "read_file",        "status": "success", "sequence": 1 },
+    { "id": "rec-’02", "timestamp": "2026-04-01T02:10:02Z", "action": "filesystem.file.read",    "risk": "low",  "target": "read_file",        "status": "failure", "sequence": 2 },
+    { "id": "rec-’03", "timestamp": "2026-04-01T02:10:03Z", "action": "system.command.execute",  "risk": "high", "target": "run_command",      "status": "success", "sequence": 3 },
+    { "id": "rec-’04", "timestamp": "2026-04-01T02:10:04Z", "action": "system.browser.navigate", "risk": "low",  "target": "browser_navigate", "status": "success", "sequence": 4 },
+    { "id": "rec-’05", "timestamp": "2026-04-01T02:10:05Z", "action": "filesystem.file.create",  "risk": "low",  "target": "write_file",       "status": "success", "sequence": 5 }
   ]
 }
 ```
@@ -203,8 +203,65 @@ All settings are optional — the plugin works out of the box with sensible defa
 | `dbPath` | `~/.openclaw/agent-receipts/receipts.db` | SQLite receipt database path |
 | `keyPath` | `~/.openclaw/agent-receipts/keys.json` | Ed25519 signing key pair path |
 | `taxonomyPath` | _(bundled)_ | Custom tool-to-action-type mapping |
+| `parameterPreview` | `false` | Selectively disclose parameters (see [Parameter Preview](#parameter-preview)) |
+
+```jsonc
+{
+  "plugins": {
+    "entries": {
+      "openclaw-agent-receipts": {
+        "config": {
+          "enabled": true,
+          "dbPath": "~/.openclaw/agent-receipts/receipts.db",
+          "keyPath": "~/.openclaw/agent-receipts/keys.json",
+          "taxonomyPath": null,
+          "parameterPreview": false  // false | true | "high" | string[]
+        }
+      }
+    }
+  }
+}
+```
 
 Ed25519 signing keys are generated automatically on first run and persisted to `keyPath`.
+
+## Parameter Preview
+
+By default, action parameters are hashed but not stored in plaintext. Enable `parameterPreview` to selectively disclose specific fields per action type — useful for auditing high-risk commands without exposing sensitive data elsewhere.
+
+```jsonc
+{
+  "plugins": {
+    "entries": {
+      "openclaw-agent-receipts": {
+        "config": {
+          "parameterPreview": "high"
+        }
+      }
+    }
+  }
+}
+```
+
+Options:
+
+| Value | Behaviour |
+|-------|-----------|
+| `false` | Hashes only — no plaintext (default) |
+| `true` | Preview enabled for all action types |
+| `"high"` | Preview enabled for `high` and `critical` risk actions only |
+| `["system.command.execute"]` | Preview enabled for specific action types |
+
+With `"high"` enabled, a `system.command.execute` receipt includes:
+
+```json
+"parameters_hash": "sha256:9c84a8c9...",
+"parameters_preview": {
+  "command": "echo \"Testing agent-receipts plugin fix\""
+}
+```
+
+The hash always covers the full original parameters regardless of preview config. The preview is additive and opt-in — fields disclosed are defined per action type in the taxonomy.
 
 ## Project structure
 

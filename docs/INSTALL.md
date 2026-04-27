@@ -53,7 +53,8 @@ All config is optional with sensible defaults:
           "enabled": true,
           "dbPath": "~/.openclaw/agent-receipts/receipts.db",
           "keyPath": "~/.openclaw/agent-receipts/keys.json",
-          "taxonomyPath": null  // custom taxonomy mapping
+          "taxonomyPath": null,  // custom taxonomy mapping
+          "parameterPreview": false  // false | true | "high" | string[]
         }
       }
     }
