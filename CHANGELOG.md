@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-04-27
+
 ### Added
 - **Parameter preview** — opt-in selective disclosure of action parameters in receipts.
   Configure via `parameterPreview: true | "high" | string[] | false` (default `false`).
@@ -77,7 +79,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Security hardening: key file permissions, input validation, pending-map memory
   leak prevention (#22).
 
-[Unreleased]: https://github.com/agent-receipts/openclaw/compare/v0.3.3...HEAD
+[Unreleased]: https://github.com/agent-receipts/openclaw/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/agent-receipts/openclaw/compare/v0.3.3...v0.4.0
 [0.3.3]: https://github.com/agent-receipts/openclaw/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/agent-receipts/openclaw/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/agent-receipts/openclaw/compare/v0.3.0...v0.3.1
