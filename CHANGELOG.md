@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-04-27
+
+### Fixed
+- Recover chain state from the store after a plugin restart. When the process restarts
+  mid-session, the in-memory sequence counter was re-initialised to 0 while the database
+  still held prior receipts, causing every subsequent `store.insert` to fail with
+  `UNIQUE constraint failed: receipts.chain_id, receipts.sequence` and leaving the chain
+  permanently stuck for that session (#103).
+
 ## [0.4.0] - 2026-04-27
 
 ### Added
