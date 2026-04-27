@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   openStore,
   verifyChain,
+  hashReceipt,
   canonicalize,
   sha256,
   type ReceiptStore,
@@ -172,6 +173,51 @@ describe("hooks", () => {
 
       const chain = store.getChain("chain_openclaw_test-session_sid-1");
       expect(chain[0]!.credentialSubject.action.type).toBe("unknown");
+    });
+  });
+
+  describe("chain recovery after plugin restart", () => {
+    it("resumes sequence and links chain correctly after in-memory state is lost", async () => {
+      // Populate the store with two receipts
+      await simulateToolCall(deps, "read_file", { path: "/a.txt" }, { toolCallId: "tc-1" });
+      await simulateToolCall(deps, "read_file", { path: "/b.txt" }, { toolCallId: "tc-2" });
+
+      // Simulate restart: same key reloaded from disk, in-memory chain state wiped
+      deps.chains.clear();
+
+      // Before this fix: threw UNIQUE constraint failed (receipts.chain_id, receipts.sequence)
+      await simulateToolCall(deps, "read_file", { path: "/c.txt" }, { toolCallId: "tc-3" });
+
+      const chain = store.getChain("chain_openclaw_test-session_sid-1");
+      expect(chain).toHaveLength(3);
+      expect(chain[2]!.credentialSubject.chain.sequence).toBe(3);
+      expect(chain[2]!.credentialSubject.chain.previous_receipt_hash).toBe(hashReceipt(chain[1]!));
+
+      // All three receipts form a valid cryptographic chain under the same key
+      const verification = verifyChain(chain, deps.publicKey);
+      expect(verification.valid).toBe(true);
+      expect(verification.length).toBe(3);
+    });
+
+    it("does not re-trigger recovery on calls after the first post-restart call", async () => {
+      await simulateToolCall(deps, "read_file", { path: "/a.txt" }, { toolCallId: "tc-1" });
+      deps.chains.clear();
+      await simulateToolCall(deps, "read_file", { path: "/b.txt" }, { toolCallId: "tc-2" });
+      await simulateToolCall(deps, "read_file", { path: "/c.txt" }, { toolCallId: "tc-3" });
+
+      const chain = store.getChain("chain_openclaw_test-session_sid-1");
+      expect(chain).toHaveLength(3);
+      expect(chain[2]!.credentialSubject.chain.sequence).toBe(3);
+    });
+
+    it("starts at sequence 1 when the store has no prior receipts for the chain", async () => {
+      // Fresh store, fresh chains map — recovery should be a no-op
+      await simulateToolCall(deps, "read_file", { path: "/a.txt" });
+
+      const chain = store.getChain("chain_openclaw_test-session_sid-1");
+      expect(chain).toHaveLength(1);
+      expect(chain[0]!.credentialSubject.chain.sequence).toBe(1);
+      expect(chain[0]!.credentialSubject.chain.previous_receipt_hash).toBeNull();
     });
   });
 

@@ -19,7 +19,7 @@ import {
 } from "@agnt-rcpt/sdk-ts";
 
 import { classify, type ExtendedTaxonomyMapping, type TaxonomyPattern } from "./classify.js";
-import { type ChainsMap, getChainState, advanceChain } from "./chain.js";
+import { type ChainsMap, type ChainState, getChainState, advanceChain } from "./chain.js";
 import type { ParameterPreviewConfig } from "./config.js";
 
 export type PendingCall = {
@@ -36,6 +36,25 @@ const PENDING_MAX_SIZE = 1000;
 
 function callKey(runId?: string, toolCallId?: string): string {
   return `${runId ?? "unknown"}:${toolCallId ?? "unknown"}`;
+}
+
+/**
+ * If in-memory chain state is fresh (sequence=0, no prior hash), check the store
+ * for existing receipts and resume from the last one. Handles plugin restarts
+ * where the DB retains receipts but in-memory state is wiped.
+ */
+function recoverChainState(
+  state: ChainState,
+  store: ReceiptStore,
+  logger: { warn: (msg: string) => void },
+): void {
+  const last = store.getChain(state.chainId).at(-1);
+  if (!last) return;
+  state.sequence = last.credentialSubject.chain.sequence;
+  state.previousReceiptHash = hashReceipt(last);
+  logger.warn(
+    `agent-receipts: in-memory chain state was missing; recovered chain ${state.chainId} at sequence ${state.sequence}`,
+  );
 }
 
 export type HookDeps = {
@@ -159,8 +178,11 @@ export async function afterToolCall(
       ? extractPreview(previewParams, classification.preview_fields)
       : undefined;
 
-  // Get chain state and advance sequence
+  // Recover from the store if in-memory state was lost (e.g. plugin restart mid-session)
   const chain = getChainState(deps.chains, sessionKey, sessionId);
+  if (chain.sequence === 0 && chain.previousReceiptHash === null) {
+    recoverChainState(chain, deps.store, deps.logger);
+  }
   const nextSequence = chain.sequence + 1;
 
   // Determine outcome
