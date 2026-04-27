@@ -7,10 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-04-27
+
 ### Fixed
 - Classify `sessions_spawn` and `subagents` as `system.command.execute` (high risk)
   instead of `system.application.launch` (low risk). Spawning a new agent session is
   a high-privilege operation; receipts now reflect that in audit trails (#106).
+- Scope `session_start` pending-stash eviction to the current session only. Previously
+  `pending.clear()` wiped stashed call data for every in-flight tool call across all
+  sessions, causing concurrent sessions to lose their `startedAt` timestamp and fall
+  back to recomputing `paramsHash` from the event params instead of the original stash
+  (#107).
+- Scope pending eviction by `(sessionKey, sessionId)` pair, not `sessionKey` alone.
+  Two sessions sharing a `sessionKey` but with different `sessionIds` are distinct;
+  evicting by `sessionKey` alone still allowed one session's `session_start` to clear
+  another's pending stash (#107).
 
 ## [0.4.1] - 2026-04-27
 
