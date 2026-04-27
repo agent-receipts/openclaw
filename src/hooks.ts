@@ -27,6 +27,7 @@ export type PendingCall = {
   params: Record<string, unknown>;
   startedAt: string;
   paramsHash: string;
+  sessionKey: string;
 };
 
 export type PendingMap = Map<string, PendingCall>;
@@ -129,7 +130,7 @@ function evictStalePending(pending: PendingMap): void {
  */
 export function beforeToolCall(
   event: { toolName: string; params: Record<string, unknown>; runId?: string; toolCallId?: string },
-  _ctx: { sessionKey?: string; sessionId?: string },
+  ctx: { sessionKey?: string; sessionId?: string },
   deps: HookDeps,
 ): void {
   evictStalePending(deps.pending);
@@ -140,6 +141,7 @@ export function beforeToolCall(
     params: event.params,
     startedAt: new Date().toISOString(),
     paramsHash: sha256(canonicalize(event.params)),
+    sessionKey: ctx.sessionKey ?? "default",
   });
 }
 

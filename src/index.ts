@@ -74,7 +74,9 @@ export default definePluginEntry({
       const sessionKey = ctx.sessionKey ?? "default";
       const sessionId = ctx.sessionId;
       resetChain(chains, sessionKey, sessionId);
-      pending.clear();
+      for (const [key, entry] of pending) {
+        if (entry.sessionKey === sessionKey) pending.delete(key);
+      }
       api.logger.info(`agent-receipts: new chain for session ${sessionKey}`);
     });
 

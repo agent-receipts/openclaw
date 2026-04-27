@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   openStore,
   verifyChain,
+  verifyStoredChain,
   hashReceipt,
   canonicalize,
   sha256,
@@ -218,6 +219,35 @@ describe("hooks", () => {
       expect(chain).toHaveLength(1);
       expect(chain[0]!.credentialSubject.chain.sequence).toBe(1);
       expect(chain[0]!.credentialSubject.chain.previous_receipt_hash).toBeNull();
+    });
+
+    it("verifyStoredChain passes after recovery (exercises the production code path)", async () => {
+      await simulateToolCall(deps, "read_file", { path: "/a.txt" }, { toolCallId: "tc-1" });
+      await simulateToolCall(deps, "write_file", { path: "/b.txt" }, { toolCallId: "tc-2" });
+
+      deps.chains.clear();
+
+      await simulateToolCall(deps, "delete_file", { path: "/c.txt" }, { toolCallId: "tc-3" });
+
+      const chainId = "chain_openclaw_test-session_sid-1";
+      const result = verifyStoredChain(store, chainId, deps.publicKey);
+      expect(result.valid).toBe(true);
+      expect(result.length).toBe(3);
+    });
+
+    it("hashReceipt is stable across a JSON round-trip through the store", async () => {
+      await simulateToolCall(deps, "read_file", { path: "/a.txt" });
+
+      const chainId = "chain_openclaw_test-session_sid-1";
+      // Retrieve the receipt that was stored (goes through JSON.stringify → SQLite → JSON.parse)
+      const retrieved = store.getChain(chainId)[0]!;
+      // Compute hash from retrieved receipt and compare to what recoverChainState would compute
+      const roundTripHash = hashReceipt(retrieved);
+      // The next receipt must link to this hash — confirm it matches what advanceChain stored
+      deps.chains.clear();
+      await simulateToolCall(deps, "write_file", { path: "/b.txt" }, { toolCallId: "tc-2" });
+      const chain = store.getChain(chainId);
+      expect(chain[1]!.credentialSubject.chain.previous_receipt_hash).toBe(roundTripHash);
     });
   });
 
