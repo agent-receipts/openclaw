@@ -91,10 +91,16 @@ describe("classify", () => {
     expect(result.risk_level).toBe("low");
   });
 
-  it("maps sessions_spawn to system.application.launch with low risk", () => {
+  it("maps sessions_spawn to system.command.execute with high risk", () => {
     const result = classify("sessions_spawn", DEFAULT_MAPPINGS);
-    expect(result.action_type).toBe("system.application.launch");
-    expect(result.risk_level).toBe("low");
+    expect(result.action_type).toBe("system.command.execute");
+    expect(result.risk_level).toBe("high");
+  });
+
+  it("maps subagents to system.command.execute with high risk", () => {
+    const result = classify("subagents", DEFAULT_MAPPINGS);
+    expect(result.action_type).toBe("system.command.execute");
+    expect(result.risk_level).toBe("high");
   });
 
   it("maps process to system.command.execute with high risk", () => {

@@ -41,9 +41,9 @@
     { "tool_name": "sessions_history",  "action_type": "filesystem.file.read" },
     { "tool_name": "session_status",    "action_type": "filesystem.file.read" },
     { "tool_name": "sessions_send",     "action_type": "system.application.control" },
-    { "tool_name": "sessions_spawn",    "action_type": "system.application.launch" },
+    { "tool_name": "sessions_spawn",    "action_type": "system.command.execute" },
     { "tool_name": "sessions_yield",    "action_type": "system.application.control" },
-    { "tool_name": "subagents",         "action_type": "system.application.launch" },
+    { "tool_name": "subagents",         "action_type": "system.command.execute" },
     { "tool_name": "agents_list",       "action_type": "filesystem.file.read" },
 
     { "tool_name": "browser",           "action_type": "system.browser.navigate" },

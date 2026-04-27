@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Classify `sessions_spawn` and `subagents` as `system.command.execute` (high risk)
+  instead of `system.application.launch` (low risk). Spawning a new agent session is
+  a high-privilege operation; receipts now reflect that in audit trails (#106).
+
 ## [0.4.1] - 2026-04-27
 
 ### Fixed
