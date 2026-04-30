@@ -124,7 +124,7 @@ Restart the gateway with the appropriate command for your setup:
 systemctl restart openclaw-gateway
 ```
 
-For other setups, stop and re-start the gateway process however it was launched.
+For other setups, stop and restart the gateway process however it was launched.
 
 > **Note:** There is no `openclaw restart` command.
 
