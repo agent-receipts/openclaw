@@ -125,9 +125,9 @@ npx @agnt-rcpt/openclaw receipts --action system.command.execute --json
 # `receipts` always returns a collection — use `export --id` to fetch a single receipt by ID
 npx @agnt-rcpt/openclaw export --id urn:receipt:abc-123
 
-# Filter JSON output with jq (find exec commands containing "rm")
-npx @agnt-rcpt/openclaw receipts --action system.command.execute --json \
-  | jq '.receipts[] | select(.parameters_preview.command | strings | contains("rm"))'
+# Filter receipts --json output with jq (fields: id, action, risk, target, status, sequence, chain_id, timestamp)
+npx @agnt-rcpt/openclaw receipts --json \
+  | jq '.receipts[] | select(.risk == "high" and .action == "system.command.execute")'
 
 # Verify all chains
 npx @agnt-rcpt/openclaw verify
@@ -142,7 +142,7 @@ npx @agnt-rcpt/openclaw export --chain chain_openclaw_main_sid-42
 npx @agnt-rcpt/openclaw export --chain chain_openclaw_main_sid-42 --format presentation
 ```
 
-> **Note:** `parameters_preview` is empty by default. Set `"parameterPreview": "high"` (or `true`) in your plugin config to see plaintext parameter values for high-risk actions. See [Parameter preview](#parameter-preview) for details.
+> **Note:** `parameterPreview` controls what gets stored inside receipts — it does not add fields to `receipts --json` output. To inspect `parameters_preview` values, export the full receipt with `export --id` or `export --chain`. See [Parameter preview](#parameter-preview) for configuration details.
 
 Run `npx @agnt-rcpt/openclaw --help` for all options including `--status`, `--limit`, and `--db`.
 
