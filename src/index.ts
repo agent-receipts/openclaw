@@ -70,7 +70,7 @@ export default definePluginEntry({
       chains,
       mappings,
       patterns,
-      parameterPreview: cfg.parameterPreview,
+      parameterDisclosure: cfg.parameterDisclosure,
     };
 
     // --- Hooks ---

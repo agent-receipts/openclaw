@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (breaking)
+- **Renamed `parameterPreview` → `parameterDisclosure`** (config option),
+  `preview_fields` → `disclosure_fields` (taxonomy entries), and the receipt
+  field `parameters_preview` → `parameters_disclosure`. Mirrors the SDK rename
+  in [`@agnt-rcpt/sdk-ts` 0.6.0](https://github.com/agent-receipts/ar/releases/tag/sdk-ts-v0.6.0)
+  per [ADR-0012](https://github.com/agent-receipts/ar/blob/main/docs/adr/0012-payload-disclosure-policy.md):
+  "preview" misdescribed a permanent, signed field. No deprecation alias is
+  provided — update plugin config and any custom taxonomy files before
+  upgrading.
+
+### Changed
+- Bump `@agnt-rcpt/sdk-ts` to `^0.6.0`. The SDK now also surfaces
+  `hashReceipt` and `verifyReceipt` errors in `ChainVerification.error`
+  (previously swallowed), improving diagnostics from `ar_verify_chain`.
+
 ## [0.4.2] - 2026-04-27
 
 ### Fixed

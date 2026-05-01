@@ -16,14 +16,14 @@ export interface TaxonomyPattern {
   action_type: string;
 }
 
-/** Extends the SDK's TaxonomyMapping with optional preview field names. */
+/** Extends the SDK's TaxonomyMapping with optional disclosure field names. */
 export interface ExtendedTaxonomyMapping extends TaxonomyMapping {
-  preview_fields?: string[];
+  disclosure_fields?: string[];
 }
 
-/** Extends ClassificationResult with preview field names from the matched mapping. */
+/** Extends ClassificationResult with disclosure field names from the matched mapping. */
 export interface ExtendedClassificationResult extends ClassificationResult {
-  preview_fields?: string[];
+  disclosure_fields?: string[];
 }
 
 /** The bundled default mappings, exported for use when no custom taxonomy is configured. */
@@ -66,7 +66,7 @@ export function loadCustomMappings(filePath: string): { mappings: ExtendedTaxono
 
 /**
  * Classify an OpenClaw tool call into an sdk-ts action type and risk level.
- * Returns preview_fields from the matched mapping entry if present.
+ * Returns disclosure_fields from the matched mapping entry if present.
  *
  * Lookup order: exact match → prefix pattern → unknown.
  */
@@ -79,7 +79,7 @@ export function classify(
   const exact = classifyToolCall(toolName, mappings);
   if (exact.action_type !== "unknown") {
     const matched = mappings.find((m) => m.tool_name === toolName);
-    return { ...exact, preview_fields: matched?.preview_fields };
+    return { ...exact, disclosure_fields: matched?.disclosure_fields };
   }
 
   // 2. Try prefix patterns (first match wins, order matters)

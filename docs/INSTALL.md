@@ -63,7 +63,7 @@ All config is optional with sensible defaults:
           "dbPath": "~/.openclaw/agent-receipts/receipts.db",
           "keyPath": "~/.openclaw/agent-receipts/keys.json",
           // "taxonomyPath": "/path/to/custom-taxonomy.json",  // optional — overrides bundled taxonomy
-          "parameterPreview": false       // false | true | "high" | string[]
+          "parameterDisclosure": false    // false | true | "high" | string[]
         }
       }
     }
@@ -71,9 +71,9 @@ All config is optional with sensible defaults:
 }
 ```
 
-## Parameter preview
+## Parameter disclosure
 
-By default, action parameters are hashed but not stored in plaintext. Enable `parameterPreview` to selectively disclose specific fields per action type — useful for auditing high-risk commands without exposing sensitive data on lower-risk calls.
+By default, action parameters are hashed but not stored in plaintext. Enable `parameterDisclosure` to selectively disclose specific fields per action type — useful for auditing high-risk commands without exposing sensitive data on lower-risk calls.
 
 ```jsonc
 {
@@ -81,7 +81,7 @@ By default, action parameters are hashed but not stored in plaintext. Enable `pa
     "entries": {
       "openclaw-agent-receipts": {
         "config": {
-          "parameterPreview": "high"
+          "parameterDisclosure": "high"
         }
       }
     }
@@ -94,9 +94,9 @@ Options:
 | Value | Behavior |
 |-------|----------|
 | `false` | Hashes only — no plaintext (default) |
-| `true` | Preview enabled for all action types |
-| `"high"` | Preview enabled for `high` and `critical` risk actions only |
-| `["system.command.execute"]` | Preview enabled for specific action types |
+| `true` | Disclosure enabled for all action types |
+| `"high"` | Disclosure enabled for `high` and `critical` risk actions only |
+| `["system.command.execute"]` | Disclosure enabled for specific action types |
 
 With `"high"` enabled, a `system.command.execute` receipt includes:
 
@@ -104,13 +104,13 @@ With `"high"` enabled, a `system.command.execute` receipt includes:
 {
   // ...other receipt fields
   "parameters_hash": "sha256:9c84a8c9...",
-  "parameters_preview": {
+  "parameters_disclosure": {
     "command": "echo \"Testing agent-receipts plugin fix\""
   }
 }
 ```
 
-The hash always covers the full original parameters regardless of preview config. Only the **first** matching field from the taxonomy's `preview_fields` list is included in `parameters_preview`, and non-string values are JSON-stringified. Previewed values are stored verbatim — do not list fields that may contain secrets.
+The hash always covers the full original parameters regardless of disclosure config. Only the **first** matching field from the taxonomy's `disclosure_fields` list is included in `parameters_disclosure`, and non-string values are JSON-stringified. Disclosed values are signed and durable — do not list fields that may contain secrets.
 
 ## Verifying
 

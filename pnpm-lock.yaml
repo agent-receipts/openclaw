@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@agnt-rcpt/sdk-ts':
-        specifier: ^0.5.0
-        version: 0.5.0
+        specifier: ^0.6.0
+        version: 0.6.0
       '@sinclair/typebox':
         specifier: 0.34.49
         version: 0.34.49
@@ -38,8 +38,8 @@ packages:
     peerDependencies:
       zod: ^3.25.0 || ^4.0.0
 
-  '@agnt-rcpt/sdk-ts@0.5.0':
-    resolution: {integrity: sha512-74JZAvX/VauEwk/TBGIE4RXiWMJOvGLgaE5iTUXFe3BZ0zvvNkK1eBOVk7IFOp8Pp1xI1pe8iVUNc7jFvJmdUg==}
+  '@agnt-rcpt/sdk-ts@0.6.0':
+    resolution: {integrity: sha512-t5KfR3xn75ajqgOGdhCaVQDHO8wfHgLkrP5jSTAlcUd0eiSqn68DH8qQHaOm2cKOnUEvXH6STHbxx1jJ6XYtGw==}
     engines: {node: '>=22.11.0'}
 
   '@anthropic-ai/sdk@0.90.0':
@@ -2512,6 +2512,9 @@ packages:
     peerDependencies:
       zod: ^3.25.28 || ^4
 
+  zod@3.25.76:
+    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
+
   zod@4.3.6:
     resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
 
@@ -2521,7 +2524,9 @@ snapshots:
     dependencies:
       zod: 4.3.6
 
-  '@agnt-rcpt/sdk-ts@0.5.0': {}
+  '@agnt-rcpt/sdk-ts@0.6.0':
+    dependencies:
+      zod: 3.25.76
 
   '@anthropic-ai/sdk@0.90.0(zod@4.3.6)':
     dependencies:
@@ -5303,5 +5308,7 @@ snapshots:
   zod-to-json-schema@3.25.2(zod@4.3.6):
     dependencies:
       zod: 4.3.6
+
+  zod@3.25.76: {}
 
   zod@4.3.6: {}

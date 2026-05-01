@@ -12,8 +12,8 @@ import {
   beforeToolCall,
   afterToolCall,
   evictPendingForSession,
-  shouldPreview,
-  extractPreview,
+  shouldDisclose,
+  extractDisclosure,
 } from "./hooks.js";
 import { makeHookDeps, simulateToolCall } from "./test-helpers.js";
 
@@ -337,77 +337,77 @@ describe("hooks", () => {
   });
 });
 
-describe("shouldPreview", () => {
+describe("shouldDisclose", () => {
   it("returns false when config is undefined", () => {
-    expect(shouldPreview(undefined, "high", "system.command.execute")).toBe(false);
+    expect(shouldDisclose(undefined, "high", "system.command.execute")).toBe(false);
   });
 
   it("returns false when config is false", () => {
-    expect(shouldPreview(false, "high", "system.command.execute")).toBe(false);
+    expect(shouldDisclose(false, "high", "system.command.execute")).toBe(false);
   });
 
   it("returns true when config is true for any risk or action type", () => {
-    expect(shouldPreview(true, "low", "filesystem.file.read")).toBe(true);
-    expect(shouldPreview(true, "critical", "system.command.execute")).toBe(true);
+    expect(shouldDisclose(true, "low", "filesystem.file.read")).toBe(true);
+    expect(shouldDisclose(true, "critical", "system.command.execute")).toBe(true);
   });
 
   it("returns true for high and critical risk when config is 'high'", () => {
-    expect(shouldPreview("high", "high", "system.command.execute")).toBe(true);
-    expect(shouldPreview("high", "critical", "system.command.execute")).toBe(true);
+    expect(shouldDisclose("high", "high", "system.command.execute")).toBe(true);
+    expect(shouldDisclose("high", "critical", "system.command.execute")).toBe(true);
   });
 
   it("returns false for low and medium risk when config is 'high'", () => {
-    expect(shouldPreview("high", "low", "filesystem.file.read")).toBe(false);
-    expect(shouldPreview("high", "medium", "filesystem.file.read")).toBe(false);
+    expect(shouldDisclose("high", "low", "filesystem.file.read")).toBe(false);
+    expect(shouldDisclose("high", "medium", "filesystem.file.read")).toBe(false);
   });
 
   it("returns true when action type is in the allowlist array", () => {
-    expect(shouldPreview(["system.command.execute"], "high", "system.command.execute")).toBe(true);
+    expect(shouldDisclose(["system.command.execute"], "high", "system.command.execute")).toBe(true);
   });
 
   it("returns false when action type is not in the allowlist array", () => {
-    expect(shouldPreview(["system.command.execute"], "high", "filesystem.file.read")).toBe(false);
+    expect(shouldDisclose(["system.command.execute"], "high", "filesystem.file.read")).toBe(false);
   });
 });
 
-describe("extractPreview", () => {
+describe("extractDisclosure", () => {
   it("returns the first matching field when it is present", () => {
-    const result = extractPreview({ command: "ls -la", cmd: "ignored" }, ["command", "cmd"]);
+    const result = extractDisclosure({ command: "ls -la", cmd: "ignored" }, ["command", "cmd"]);
     expect(result).toEqual({ command: "ls -la" });
   });
 
   it("falls back to the next field when the first is absent", () => {
-    const result = extractPreview({ cmd: "ls -la" }, ["command", "cmd"]);
+    const result = extractDisclosure({ cmd: "ls -la" }, ["command", "cmd"]);
     expect(result).toEqual({ cmd: "ls -la" });
   });
 
   it("returns undefined when no fields match", () => {
-    const result = extractPreview({ other: "value" }, ["command", "cmd"]);
+    const result = extractDisclosure({ other: "value" }, ["command", "cmd"]);
     expect(result).toBeUndefined();
   });
 
   it("returns undefined for empty fields array", () => {
-    const result = extractPreview({ command: "ls" }, []);
+    const result = extractDisclosure({ command: "ls" }, []);
     expect(result).toBeUndefined();
   });
 
   it("stringifies non-string values via JSON.stringify", () => {
-    const result = extractPreview({ timeout: 30 }, ["timeout"]);
+    const result = extractDisclosure({ timeout: 30 }, ["timeout"]);
     expect(result).toEqual({ timeout: "30" });
   });
 
   it("stringifies array and object values", () => {
-    expect(extractPreview({ args: ["a", "b"] }, ["args"])).toEqual({ args: '["a","b"]' });
-    expect(extractPreview({ meta: { key: 1 } }, ["meta"])).toEqual({ meta: '{"key":1}' });
+    expect(extractDisclosure({ args: ["a", "b"] }, ["args"])).toEqual({ args: '["a","b"]' });
+    expect(extractDisclosure({ meta: { key: 1 } }, ["meta"])).toEqual({ meta: '{"key":1}' });
   });
 
   it("skips null field values and falls back to next field", () => {
-    const result = extractPreview({ command: null, cmd: undefined, script: "echo hi" }, ["command", "cmd", "script"]);
+    const result = extractDisclosure({ command: null, cmd: undefined, script: "echo hi" }, ["command", "cmd", "script"]);
     expect(result).toEqual({ script: "echo hi" });
   });
 
   it("treats empty string as a valid value", () => {
-    const result = extractPreview({ command: "" }, ["command"]);
+    const result = extractDisclosure({ command: "" }, ["command"]);
     expect(result).toEqual({ command: "" });
   });
 });

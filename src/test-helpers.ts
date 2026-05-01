@@ -10,7 +10,7 @@ import {
 import { beforeToolCall, afterToolCall, type HookDeps, type PendingMap } from "./hooks.js";
 import { type ChainsMap, type ChainState } from "./chain.js";
 import { DEFAULT_MAPPINGS, DEFAULT_PATTERNS } from "./classify.js";
-import type { ParameterPreviewConfig } from "./config.js";
+import type { ParameterDisclosureConfig } from "./config.js";
 
 /**
  * Create HookDeps with generated keys, in-memory store, and isolated state.
@@ -19,7 +19,7 @@ import type { ParameterPreviewConfig } from "./config.js";
  */
 export function makeHookDeps(
   store?: ReceiptStore,
-  overrides?: { parameterPreview?: ParameterPreviewConfig },
+  overrides?: { parameterDisclosure?: ParameterDisclosureConfig },
 ): HookDeps & {
   publicKey: string;
   store: ReceiptStore;

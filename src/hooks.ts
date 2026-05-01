@@ -20,7 +20,7 @@ import {
 
 import { classify, type ExtendedTaxonomyMapping, type TaxonomyPattern } from "./classify.js";
 import { type ChainsMap, type ChainState, getChainState, advanceChain } from "./chain.js";
-import type { ParameterPreviewConfig } from "./config.js";
+import type { ParameterDisclosureConfig } from "./config.js";
 
 export type PendingCall = {
   toolName: string;
@@ -69,11 +69,11 @@ export type HookDeps = {
   chains: ChainsMap;
   mappings: ExtendedTaxonomyMapping[];
   patterns: TaxonomyPattern[];
-  parameterPreview?: ParameterPreviewConfig;
+  parameterDisclosure?: ParameterDisclosureConfig;
 };
 
-export function shouldPreview(
-  config: ParameterPreviewConfig | undefined,
+export function shouldDisclose(
+  config: ParameterDisclosureConfig | undefined,
   riskLevel: string,
   actionType: string,
 ): boolean {
@@ -84,7 +84,7 @@ export function shouldPreview(
   return false;
 }
 
-export function extractPreview(
+export function extractDisclosure(
   params: Record<string, unknown>,
   fields: string[],
 ): Record<string, string> | undefined {
@@ -190,13 +190,13 @@ export async function afterToolCall(
   // Classify the tool call
   const classification = classify(event.toolName, deps.mappings, deps.patterns);
 
-  // Optionally extract a preview of named parameters (plaintext, opt-in only).
-  // Use stashed params so preview and hash are derived from the same source.
-  const previewParams = stashed?.params ?? event.params;
-  const preview =
-    shouldPreview(deps.parameterPreview, classification.risk_level, classification.action_type) &&
-    classification.preview_fields?.length
-      ? extractPreview(previewParams, classification.preview_fields)
+  // Optionally disclose named parameters in plaintext (opt-in only).
+  // Use stashed params so disclosure and hash are derived from the same source.
+  const disclosureParams = stashed?.params ?? event.params;
+  const disclosure =
+    shouldDisclose(deps.parameterDisclosure, classification.risk_level, classification.action_type) &&
+    classification.disclosure_fields?.length
+      ? extractDisclosure(disclosureParams, classification.disclosure_fields)
       : undefined;
 
   // Recover from the store if in-memory state was lost (e.g. plugin restart mid-session)
@@ -214,7 +214,7 @@ export async function afterToolCall(
     risk_level: classification.risk_level,
     target: { system: "openclaw", resource: event.toolName },
     parameters_hash: stashed?.paramsHash ?? sha256(canonicalize(event.params)),
-    ...(preview !== undefined ? { parameters_preview: preview } : {}),
+    ...(disclosure !== undefined ? { parameters_disclosure: disclosure } : {}),
   };
 
   // Build the unsigned receipt

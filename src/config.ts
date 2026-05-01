@@ -2,7 +2,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync
 import { dirname, resolve } from "node:path";
 import { generateKeyPair, type KeyPair } from "@agnt-rcpt/sdk-ts";
 
-export type ParameterPreviewConfig =
+export type ParameterDisclosureConfig =
   | boolean    // true = all actions, false = disabled (default)
   | "high"     // high-risk and critical actions only
   | string[];  // specific action type strings e.g. ["system.command.execute"]
@@ -12,7 +12,7 @@ export type AttestPluginConfig = {
   keyPath?: string;
   taxonomyPath?: string;
   enabled?: boolean;
-  parameterPreview?: ParameterPreviewConfig;
+  parameterDisclosure?: ParameterDisclosureConfig;
 };
 
 const DEFAULTS = {
@@ -39,7 +39,7 @@ export function resolveConfig(pluginConfig?: Record<string, unknown>): {
   keyPath: string;
   taxonomyPath: string | undefined;
   enabled: boolean;
-  parameterPreview: ParameterPreviewConfig;
+  parameterDisclosure: ParameterDisclosureConfig;
 } {
   const cfg = (pluginConfig ?? {}) as AttestPluginConfig;
   return {
@@ -47,7 +47,7 @@ export function resolveConfig(pluginConfig?: Record<string, unknown>): {
     keyPath: expandHome(cfg.keyPath ?? DEFAULTS.keyPath),
     taxonomyPath: cfg.taxonomyPath ? expandHome(cfg.taxonomyPath) : undefined,
     enabled: cfg.enabled !== false,
-    parameterPreview: cfg.parameterPreview ?? false,
+    parameterDisclosure: cfg.parameterDisclosure ?? false,
   };
 }
 

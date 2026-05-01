@@ -53,7 +53,7 @@ Verifying the chain confirms nothing was tampered with:
 Chain "chain_openclaw_main_sid-42" is valid: 5 receipts, all signatures and hash links verified.
 ```
 
-Every receipt is a signed [W3C Verifiable Credential](https://www.w3.org/TR/vc-data-model-2.0/) — parameters are hashed by default (with optional plaintext preview via `parameterPreview`), and each receipt is hash-linked to the previous one, forming a tamper-evident chain.
+Every receipt is a signed [W3C Verifiable Credential](https://www.w3.org/TR/vc-data-model-2.0/) — parameters are hashed by default (with optional plaintext disclosure via `parameterDisclosure`), and each receipt is hash-linked to the previous one, forming a tamper-evident chain.
 
 ---
 
@@ -142,7 +142,7 @@ npx @agnt-rcpt/openclaw export --chain chain_openclaw_main_sid-42
 npx @agnt-rcpt/openclaw export --chain chain_openclaw_main_sid-42 --format presentation
 ```
 
-> **Note:** `parameterPreview` controls what gets stored inside receipts — it does not add fields to `receipts --json` output. To inspect `parameters_preview` values, export the full receipt with `export --id` or `export --chain`. See [Parameter preview](#parameter-preview) for configuration details.
+> **Note:** `parameterDisclosure` controls what gets stored inside receipts — it does not add fields to `receipts --json` output. To inspect `parameters_disclosure` values, export the full receipt with `export --id` or `export --chain`. See [Parameter disclosure](#parameter-disclosure) for configuration details.
 
 Run `npx @agnt-rcpt/openclaw --help` for all options including `--status`, `--limit`, and `--db`.
 
@@ -185,7 +185,7 @@ Each receipt is a W3C Verifiable Credential signed with Ed25519, recording:
 | **Action** | What happened — classified type, risk level, target tool |
 | **Outcome** | Success/failure status and error details |
 | **Chain** | Sequence number + SHA-256 hash link to previous receipt |
-| **Privacy** | Parameters are hashed by default; opt in via `parameterPreview` to include selected fields in plaintext |
+| **Privacy** | Parameters are hashed by default; opt in via `parameterDisclosure` to include selected fields in plaintext |
 | **Proof** | Ed25519Signature2020 with verification method |
 
 ## Taxonomy
@@ -215,7 +215,7 @@ All settings are optional — the plugin works out of the box with sensible defa
 | `dbPath` | `~/.openclaw/agent-receipts/receipts.db` | SQLite receipt database path |
 | `keyPath` | `~/.openclaw/agent-receipts/keys.json` | Ed25519 signing key pair path |
 | `taxonomyPath` | _(bundled)_ | Custom tool-to-action-type mapping |
-| `parameterPreview` | `false` | Selectively disclose parameters in plaintext (see below) |
+| `parameterDisclosure` | `false` | Selectively disclose parameters in plaintext (see below) |
 
 Default config block:
 
@@ -229,7 +229,7 @@ Default config block:
           "dbPath": "~/.openclaw/agent-receipts/receipts.db",
           "keyPath": "~/.openclaw/agent-receipts/keys.json",
           // "taxonomyPath": "/path/to/custom-taxonomy.json",  // optional — overrides bundled taxonomy
-          "parameterPreview": false  // false | true | "high" | string[]
+          "parameterDisclosure": false  // false | true | "high" | string[]
         }
       }
     }
@@ -239,9 +239,9 @@ Default config block:
 
 Ed25519 signing keys are generated automatically on first run and persisted to `keyPath`.
 
-### Parameter preview
+### Parameter disclosure
 
-By default, action parameters are hashed but not stored in plaintext. Enable `parameterPreview` to selectively disclose specific fields per action type — useful for auditing high-risk commands without exposing sensitive data on lower-risk calls.
+By default, action parameters are hashed but not stored in plaintext. Enable `parameterDisclosure` to selectively disclose specific fields per action type — useful for auditing high-risk commands without exposing sensitive data on lower-risk calls.
 
 ```jsonc
 {
@@ -249,7 +249,7 @@ By default, action parameters are hashed but not stored in plaintext. Enable `pa
     "entries": {
       "openclaw-agent-receipts": {
         "config": {
-          "parameterPreview": "high"
+          "parameterDisclosure": "high"
         }
       }
     }
@@ -262,9 +262,9 @@ Options:
 | Value | Behavior |
 |:---|:---|
 | `false` | Hashes only — no plaintext (default) |
-| `true` | Preview enabled for all action types |
-| `"high"` | Preview enabled for `high` and `critical` risk actions only |
-| `["system.command.execute"]` | Preview enabled for specific action types |
+| `true` | Disclosure enabled for all action types |
+| `"high"` | Disclosure enabled for `high` and `critical` risk actions only |
+| `["system.command.execute"]` | Disclosure enabled for specific action types |
 
 With `"high"` enabled, a `system.command.execute` receipt includes:
 
@@ -272,13 +272,13 @@ With `"high"` enabled, a `system.command.execute` receipt includes:
 {
   // ...other receipt fields
   "parameters_hash": "sha256:9c84a8c9...",
-  "parameters_preview": {
+  "parameters_disclosure": {
     "command": "echo \"Testing agent-receipts plugin fix\""
   }
 }
 ```
 
-The hash always covers the full original parameters regardless of preview config. Only the **first** matching field from the taxonomy's `preview_fields` list is included in `parameters_preview`, and non-string values are JSON-stringified. Previewed values are stored verbatim — do not list fields that may contain secrets.
+The hash always covers the full original parameters regardless of disclosure config. Only the **first** matching field from the taxonomy's `disclosure_fields` list is included in `parameters_disclosure`, and non-string values are JSON-stringified. Disclosed values are signed and durable — do not list fields that may contain secrets.
 
 ## Project structure
 
