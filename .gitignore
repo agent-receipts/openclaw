@@ -5,3 +5,8 @@ dist/
 package-lock.json
 keys.json
 *-recording.txt
+
+# Claude Code local session state (project-level settings.json and hooks/ are tracked)
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+.claude/worktrees/

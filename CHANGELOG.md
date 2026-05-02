@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (breaking)
+- **`ar_query_receipts` now defaults to the current session's chain** instead
+  of querying every chain in the store. Pass `all_chains: true` to restore the
+  prior global-query behavior. Cross-session audit callers should opt in
+  explicitly (#118, #119).
+
+### Fixed
+- `ar_query_receipts` respects `timestamp_after` — previously the parameter
+  was missing from the tool schema, so it was silently dropped before reaching
+  the SDK and stale receipts were returned (#118).
+- `ar_query_receipts` returns the *newest* receipts by default. The SDK's
+  underlying query orders ASC, so the prior `limit: 20` returned the 20
+  oldest receipts in larger sessions, making real-time auditing impossible
+  (#118).
+- `limit` parameter is clamped — negative or fractional values fall back to
+  the default 20 instead of producing surprising slices like "all-but-last".
+
+### Added
+- New `ar_query_receipts` filters: `chain_id`, `timestamp_after` (exclusive),
+  `timestamp_before` (inclusive), `all_chains`.
+- Result objects now include `chain_id` so callers can identify the source
+  chain and reuse it in follow-up queries.
+- Polling guidance in the tool description: pass `timestamp_after` set to the
+  timestamp of the last receipt you've seen.
+
+### Known limitations
+- Stores with >10,000 matching receipts may miss the newest results
+  (SDK-level default cap). Tracked in
+  [agent-receipts/ar#300](https://github.com/agent-receipts/ar/issues/300).
+- Same-millisecond bursts beyond `limit` can drop unread receipts during
+  polling. Tracked in [#121](https://github.com/agent-receipts/openclaw/issues/121).
+- Exclusive `timestamp_after` filter compares ISO 8601 strings byte-wise, not
+  instant-wise. Tracked in [#122](https://github.com/agent-receipts/openclaw/issues/122).
+
 ## [0.5.0] - 2026-05-01
 
 ### Changed (breaking)
