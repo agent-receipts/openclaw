@@ -169,23 +169,24 @@ describe("integration: full plugin lifecycle", () => {
 
     // 3. Query receipts via the registered tool
     const queryTool = tools.get("ar_query_receipts")!.definition;
-    const queryResult = await queryTool.execute("tc-query", {});
+    const queryResult = await queryTool.execute("tc-query", { all_chains: true });
     const queryData = JSON.parse(queryResult.content[0].text);
 
     expect(queryData.total_receipts).toBe(3);
     expect(queryData.results).toHaveLength(3);
-    expect(queryData.results[0].action).toBe("filesystem.file.read");
+    // Results are newest-first (delete → write → read)
+    expect(queryData.results[0].action).toBe("filesystem.file.delete");
     expect(queryData.results[1].action).toBe("filesystem.file.create");
-    expect(queryData.results[2].action).toBe("filesystem.file.delete");
+    expect(queryData.results[2].action).toBe("filesystem.file.read");
 
     // Verify risk levels are classified correctly
-    expect(queryData.results[0].risk).toBe("low");    // read
-    expect(queryData.results[2].risk).toBe("high");    // delete
+    expect(queryData.results[0].risk).toBe("high");    // delete
+    expect(queryData.results[2].risk).toBe("low");     // read
 
-    // Verify sequence numbering
-    expect(queryData.results[0].sequence).toBe(1);
+    // Verify sequence numbering (newest-first: sequences 3, 2, 1)
+    expect(queryData.results[0].sequence).toBe(3);
     expect(queryData.results[1].sequence).toBe(2);
-    expect(queryData.results[2].sequence).toBe(3);
+    expect(queryData.results[2].sequence).toBe(1);
 
     // 4. Verify chain integrity via the registered tool (resolve factory with session context)
     const verifyFactory = tools.get("ar_verify_chain")!.factory!;
@@ -244,7 +245,7 @@ describe("integration: full plugin lifecycle", () => {
 
     // Session 2's receipt starts at sequence 1 (fresh chain)
     const queryTool = tools.get("ar_query_receipts")!.definition;
-    const qr = await queryTool.execute("q", { action_type: "filesystem.file.delete" });
+    const qr = await queryTool.execute("q", { action_type: "filesystem.file.delete", all_chains: true });
     const qd = JSON.parse(qr.content[0].text);
     expect(qd.results[0].sequence).toBe(1);
   });
@@ -271,7 +272,7 @@ describe("integration: full plugin lifecycle", () => {
     }, { sessionKey: "err", sessionId: "sid-err" });
 
     const queryTool = tools.get("ar_query_receipts")!.definition;
-    const result = await queryTool.execute("q", { status: "failure" });
+    const result = await queryTool.execute("q", { status: "failure", all_chains: true });
     const data = JSON.parse(result.content[0].text);
 
     expect(data.results).toHaveLength(1);
