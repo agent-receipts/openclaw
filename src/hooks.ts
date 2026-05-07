@@ -21,6 +21,17 @@ import {
 import { classify, type ExtendedTaxonomyMapping, type TaxonomyPattern } from "./classify.js";
 import { type ChainsMap, type ChainState, getChainState, advanceChain } from "./chain.js";
 import type { ParameterDisclosureConfig } from "./config.js";
+import type { EmitEvent } from "./emitter.js";
+
+/**
+ * Minimal structural interface the hook code uses from the daemon emitter.
+ * Defined here (rather than importing the concrete `Emitter` class) so that
+ * test doubles without the class's private fields are assignable, and so
+ * the hook path stays decoupled from any unused emitter surface.
+ */
+export interface EmitterLike {
+  emit(ev: EmitEvent): Promise<Error | null>;
+}
 
 export type PendingCall = {
   toolName: string;
@@ -70,6 +81,10 @@ export type HookDeps = {
   mappings: ExtendedTaxonomyMapping[];
   patterns: TaxonomyPattern[];
   parameterDisclosure?: ParameterDisclosureConfig;
+  /** Optional daemon emitter. When present, tool-call events are forwarded
+   *  to the agent-receipts daemon over AF_UNIX (ADR-0010). Fire-and-forget:
+   *  emit failures are silently dropped and never affect receipt creation. */
+  emitter?: EmitterLike;
 };
 
 export function shouldDisclose(
@@ -127,7 +142,8 @@ function evictStalePending(pending: PendingMap): void {
 }
 
 /**
- * before_tool_call handler — stash context for receipt creation.
+ * before_tool_call handler — stash context for receipt creation and forward
+ * a "pending" event to the daemon emitter when one is configured.
  */
 export function beforeToolCall(
   event: { toolName: string; params: Record<string, unknown>; runId?: string; toolCallId?: string },
@@ -145,6 +161,34 @@ export function beforeToolCall(
     sessionKey: ctx.sessionKey ?? "default",
     sessionId: ctx.sessionId,
   });
+
+  // Forward to daemon — fire-and-forget, failures are silently dropped.
+  // Defensive try/catch: in practice `canonicalize(event.params)` above
+  // already runs and rejects the bad-input cases that JSON.stringify would
+  // throw on (BigInt, cycles), so we'd have crashed before reaching here.
+  // The catch is kept so a future change to the order/content of this hook
+  // can't accidentally leak an emitter exception into the host.
+  if (deps.emitter) {
+    try {
+      const inputJson = JSON.stringify(event.params);
+      // .catch swallows async rejections so a future EmitterLike that
+      // rejects can never surface as an unhandled rejection on the host.
+      // The real Emitter never rejects (transport failures resolve to
+      // null, caller bugs resolve to Error), but we cannot rely on that
+      // for arbitrary implementations of the structural interface.
+      deps.emitter
+        .emit({
+          tool: { name: event.toolName },
+          ...(inputJson !== undefined ? { input: inputJson } : {}),
+          decision: "pending",
+        })
+        .catch(() => {});
+    } catch (err) {
+      deps.logger.warn(
+        `agent-receipts: emitter pre-call forward skipped: ${String(err)}`,
+      );
+    }
+  }
 }
 
 /**
@@ -247,4 +291,41 @@ export async function afterToolCall(
   deps.logger.info(
     `agent-receipts: receipt ${signed.id} (${classification.action_type}, ${classification.risk_level}) → chain ${chain.chainId} seq ${nextSequence}`,
   );
+
+  // Forward to daemon — fire-and-forget, failures are silently dropped.
+  // Wrap in try/catch so a non-serialisable param/result (BigInt, circular
+  // ref) cannot derail the rest of the hook.
+  //
+  // The daemon receives raw input/output here so it can perform RFC 8785
+  // canonicalisation and SHA-256 hashing. Raw values are NOT persisted —
+  // only their hashes appear in receipts (see ADR-0010). This addresses
+  // the parameter-disclosure concern: the daemon needs the raw bytes to
+  // produce a canonical hash, but it does not store them.
+  //
+  // `decision` reports the policy outcome only. A tool that ran (was
+  // allowed by policy) but errored at runtime is still `allowed`; the
+  // failure surfaces via the `error` field. Use `denied` only when the
+  // policy layer blocks a call before it executes.
+  if (deps.emitter) {
+    try {
+      const inputJson = JSON.stringify(stashed?.params ?? event.params);
+      const resultJson =
+        event.result !== undefined ? JSON.stringify(event.result) : undefined;
+      // .catch swallows async rejections — see the matching comment in
+      // beforeToolCall above.
+      deps.emitter
+        .emit({
+          tool: { name: event.toolName },
+          ...(inputJson !== undefined ? { input: inputJson } : {}),
+          ...(resultJson !== undefined ? { output: resultJson } : {}),
+          ...(event.error !== undefined ? { error: event.error } : {}),
+          decision: "allowed",
+        })
+        .catch(() => {});
+    } catch (err) {
+      deps.logger.warn(
+        `agent-receipts: emitter post-call forward skipped: ${String(err)}`,
+      );
+    }
+  }
 }

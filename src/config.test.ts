@@ -44,6 +44,28 @@ describe("resolveConfig", () => {
     expect(cfg.enabled).toBe(false);
   });
 
+  it("daemonForwarding defaults to disabled", () => {
+    expect(resolveConfig().daemonForwarding.enabled).toBe(false);
+    expect(resolveConfig({}).daemonForwarding.enabled).toBe(false);
+  });
+
+  it("daemonForwarding accepts boolean true", () => {
+    const cfg = resolveConfig({ daemonForwarding: true });
+    expect(cfg.daemonForwarding.enabled).toBe(true);
+  });
+
+  it("daemonForwarding accepts { enabled: true }", () => {
+    const cfg = resolveConfig({ daemonForwarding: { enabled: true } });
+    expect(cfg.daemonForwarding.enabled).toBe(true);
+  });
+
+  it("daemonForwarding object form treats missing/false enabled as off", () => {
+    expect(resolveConfig({ daemonForwarding: {} }).daemonForwarding.enabled).toBe(false);
+    expect(
+      resolveConfig({ daemonForwarding: { enabled: false } }).daemonForwarding.enabled,
+    ).toBe(false);
+  });
+
   it("throws when HOME is unset and path uses ~/", () => {
     const originalHome = process.env.HOME;
     try {

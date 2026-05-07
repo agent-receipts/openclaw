@@ -15,7 +15,7 @@ import {
   shouldDisclose,
   extractDisclosure,
 } from "./hooks.js";
-import { makeHookDeps, simulateToolCall } from "./test-helpers.js";
+import { FakeEmitter, makeHookDeps, simulateToolCall } from "./test-helpers.js";
 
 describe("hooks", () => {
   let store: ReceiptStore;
@@ -333,6 +333,123 @@ describe("hooks", () => {
         deps,
       );
       expect(deps.pending.get("r1:tc1")?.sessionKey).toBe("default");
+    });
+  });
+
+  describe("daemon emitter forwarding", () => {
+    it("forwards a 'pending' frame in beforeToolCall and 'allowed' in afterToolCall", async () => {
+      const emitter = new FakeEmitter();
+      const depsWithEmitter = makeHookDeps(store, { emitter });
+
+      await simulateToolCall(depsWithEmitter, "read_file", { path: "/a.txt" });
+
+      // One frame from beforeToolCall, one from afterToolCall.
+      expect(emitter.events).toHaveLength(2);
+
+      const [pre, post] = emitter.events;
+      expect(pre!.tool.name).toBe("read_file");
+      expect(pre!.decision).toBe("pending");
+      expect(pre!.input).toBe(JSON.stringify({ path: "/a.txt" }));
+      expect(pre!.output).toBeUndefined();
+
+      expect(post!.tool.name).toBe("read_file");
+      // Even on a successful tool, the decision is the *policy* outcome, so
+      // it stays "allowed". Runtime errors surface via `error`, not here.
+      expect(post!.decision).toBe("allowed");
+      expect(post!.input).toBe(JSON.stringify({ path: "/a.txt" }));
+      expect(post!.output).toBe(JSON.stringify({ ok: true }));
+      expect(post!.error).toBeUndefined();
+    });
+
+    it("populates `error` (not `denied`) when the tool ran but failed", async () => {
+      const emitter = new FakeEmitter();
+      const depsWithEmitter = makeHookDeps(store, { emitter });
+
+      await simulateToolCall(
+        depsWithEmitter,
+        "read_file",
+        { path: "/missing.txt" },
+        { error: "ENOENT: file not found" },
+      );
+
+      const post = emitter.events.at(-1)!;
+      // Wire-format contract: `decision` is the policy outcome; `denied`
+      // is reserved for policy-layer blocks. A tool that ran and crashed
+      // is still policy-allowed.
+      expect(post.decision).toBe("allowed");
+      expect(post.error).toBe("ENOENT: file not found");
+    });
+
+    it("does not crash the hook when result contains a circular reference", async () => {
+      const emitter = new FakeEmitter();
+      const depsWithEmitter = makeHookDeps(store, { emitter });
+      const warnings: string[] = [];
+      depsWithEmitter.logger = {
+        info: () => {},
+        warn: (msg: string) => warnings.push(msg),
+      };
+
+      const cyclic: Record<string, unknown> = {};
+      cyclic.self = cyclic;
+
+      await afterToolCall(
+        {
+          toolName: "read_file",
+          params: { path: "/a.txt" },
+          runId: "r1",
+          toolCallId: "tc1",
+          result: cyclic,
+        },
+        { sessionKey: "test-session", sessionId: "sid-1" },
+        depsWithEmitter,
+      );
+
+      // The receipt itself was still created.
+      expect(store.stats().total).toBe(1);
+      // The emitter was skipped, with a warning logged.
+      expect(emitter.events).toHaveLength(0);
+      expect(warnings.some((w) => w.includes("emitter post-call forward skipped"))).toBe(true);
+    });
+
+    it("absorbs an emitter that returns an Error (fire-and-forget)", async () => {
+      const emitter = new FakeEmitter();
+      emitter.emitImpl = (): Error => new Error("daemon down");
+      const depsWithEmitter = makeHookDeps(store, { emitter });
+
+      // Even though emit() resolves to an Error, the hook must still
+      // create the receipt and not throw — the failure is silently dropped.
+      await simulateToolCall(depsWithEmitter, "read_file", { path: "/a.txt" });
+
+      expect(store.stats().total).toBe(1);
+      expect(emitter.events).toHaveLength(2);
+    });
+
+    it("does not produce an unhandled rejection if a custom emitter rejects", async () => {
+      // Wire an EmitterLike that *rejects* its promise (something the real
+      // Emitter never does). The hook must attach a .catch so the host
+      // process never sees an unhandled rejection.
+      const rejecting = {
+        emit: (): Promise<Error | null> =>
+          Promise.reject(new Error("custom emitter rejected")),
+      };
+      const depsWithEmitter = makeHookDeps(store, { emitter: rejecting });
+
+      const unhandled: unknown[] = [];
+      const onUnhandled = (reason: unknown): void => {
+        unhandled.push(reason);
+      };
+      process.on("unhandledRejection", onUnhandled);
+      try {
+        await simulateToolCall(depsWithEmitter, "read_file", { path: "/a.txt" });
+        // Give the microtask queue a turn so any rejection has a chance
+        // to surface to the unhandledRejection handler.
+        await new Promise((resolve) => setImmediate(resolve));
+      } finally {
+        process.off("unhandledRejection", onUnhandled);
+      }
+
+      expect(unhandled).toHaveLength(0);
+      expect(store.stats().total).toBe(1);
     });
   });
 });

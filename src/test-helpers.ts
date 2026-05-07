@@ -7,10 +7,36 @@ import {
   openStore,
   type ReceiptStore,
 } from "@agnt-rcpt/sdk-ts";
-import { beforeToolCall, afterToolCall, type HookDeps, type PendingMap } from "./hooks.js";
+import { beforeToolCall, afterToolCall, type EmitterLike, type HookDeps, type PendingMap } from "./hooks.js";
 import { type ChainsMap, type ChainState } from "./chain.js";
 import { DEFAULT_MAPPINGS, DEFAULT_PATTERNS } from "./classify.js";
 import type { ParameterDisclosureConfig } from "./config.js";
+import type { EmitEvent } from "./emitter.js";
+
+/**
+ * Test double for the daemon emitter. Records every call and lets tests
+ * inject failures (returning an Error or throwing) without spinning up an
+ * actual AF_UNIX server. Structurally satisfies EmitterLike.
+ *
+ * Mirrors the real Emitter contract: emit() never rejects. A synchronous
+ * throw from emitImpl is caught and surfaced as a returned Error so the
+ * hook path's `.catch` is purely defensive and tests can't accidentally
+ * leak unhandled rejections.
+ */
+export class FakeEmitter implements EmitterLike {
+  readonly events: EmitEvent[] = [];
+  emitImpl: (ev: EmitEvent) => Promise<Error | null> | Error | null =
+    () => null;
+
+  async emit(ev: EmitEvent): Promise<Error | null> {
+    this.events.push(ev);
+    try {
+      return await this.emitImpl(ev);
+    } catch (err) {
+      return err instanceof Error ? err : new Error(String(err));
+    }
+  }
+}
 
 /**
  * Create HookDeps with generated keys, in-memory store, and isolated state.
@@ -19,7 +45,10 @@ import type { ParameterDisclosureConfig } from "./config.js";
  */
 export function makeHookDeps(
   store?: ReceiptStore,
-  overrides?: { parameterDisclosure?: ParameterDisclosureConfig },
+  overrides?: {
+    parameterDisclosure?: ParameterDisclosureConfig;
+    emitter?: EmitterLike;
+  },
 ): HookDeps & {
   publicKey: string;
   store: ReceiptStore;

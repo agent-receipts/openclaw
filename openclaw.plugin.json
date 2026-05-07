@@ -32,6 +32,20 @@
           { "type": "array", "items": { "type": "string" } }
         ],
         "description": "Selectively disclose action parameters in receipts. Disclosed values are signed and durable — never include secrets."
+      },
+      "daemonForwarding": {
+        "oneOf": [
+          { "type": "boolean" },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "enabled": { "type": "boolean" }
+            }
+          }
+        ],
+        "default": false,
+        "description": "Forward every tool call to a local agent-receipts daemon over AF_UNIX (ADR-0010). Off by default — enabling sends raw input/output JSON across a process boundary so the daemon can canonicalise and hash. The daemon does not persist raw values."
       }
     }
   },
@@ -58,6 +72,11 @@
     "parameterDisclosure": {
       "label": "Parameter Disclosure",
       "help": "Disclose specific action parameters in receipts. false = hashes only (default), true = all, \"high\" = high-risk only, or an array of action type strings. Disclosed values are signed and permanent — do not list fields that may contain secrets."
+    },
+    "daemonForwarding": {
+      "label": "Daemon Forwarding",
+      "help": "Forward each tool call to a local agent-receipts daemon over AF_UNIX. Off by default. Enabling sends raw input/output across a process boundary so the daemon can canonicalise and hash; the daemon does not persist raw values.",
+      "advanced": true
     }
   }
 }

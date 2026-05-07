@@ -216,6 +216,7 @@ All settings are optional — the plugin works out of the box with sensible defa
 | `keyPath` | `~/.openclaw/agent-receipts/keys.json` | Ed25519 signing key pair path |
 | `taxonomyPath` | _(bundled)_ | Custom tool-to-action-type mapping |
 | `parameterDisclosure` | `false` | Selectively disclose parameters in plaintext (see below) |
+| `daemonForwarding` | `false` | Forward each tool call to a local agent-receipts daemon over AF_UNIX (see [Daemon forwarding](#daemon-forwarding)) |
 
 Default config block:
 
@@ -229,7 +230,8 @@ Default config block:
           "dbPath": "~/.openclaw/agent-receipts/receipts.db",
           "keyPath": "~/.openclaw/agent-receipts/keys.json",
           // "taxonomyPath": "/path/to/custom-taxonomy.json",  // optional — overrides bundled taxonomy
-          "parameterDisclosure": false  // false | true | "high" | string[]
+          "parameterDisclosure": false,  // false | true | "high" | string[]
+          "daemonForwarding": false       // boolean | { enabled: boolean }
         }
       }
     }
@@ -279,6 +281,28 @@ With `"high"` enabled, a `system.command.execute` receipt includes:
 ```
 
 The hash always covers the full original parameters regardless of disclosure config. Only the **first** matching field from the taxonomy's `disclosure_fields` list is included in `parameters_disclosure`, and non-string values are JSON-stringified. Disclosed values are signed and durable — do not list fields that may contain secrets.
+
+### Daemon forwarding
+
+Off by default. When enabled, each tool call is also forwarded to a local [agent-receipts daemon](https://github.com/agent-receipts/ar/blob/main/daemon/README.md) over AF_UNIX (ADR-0010), in addition to the in-process receipt path. The daemon canonicalises and signs frames out-of-process so plugins do not need to hold key material.
+
+```jsonc
+{
+  "plugins": {
+    "entries": {
+      "openclaw-agent-receipts": {
+        "config": {
+          "daemonForwarding": true   // or { "enabled": true }
+        }
+      }
+    }
+  }
+}
+```
+
+> **Trust boundary:** enabling daemon forwarding sends raw `input` and `output` JSON across a process boundary so the daemon can canonicalise (RFC 8785) and SHA-256 hash the call. The daemon does not persist the raw values — only their hashes appear in stored receipts — but the bytes are observable on the socket and in daemon memory while the frame is in flight. This is a stricter trust boundary than the in-process `parameterDisclosure` contract, which is why it is opt-in.
+>
+> Forwarding is fire-and-forget: a missing or unreachable daemon never blocks the plugin or affects in-process receipt creation. The socket path resolves from `AGENTRECEIPTS_SOCKET`, then `$TMPDIR/agentreceipts/events.sock` on macOS, or `$XDG_RUNTIME_DIR/agentreceipts/events.sock` on Linux.
 
 ## Project structure
 

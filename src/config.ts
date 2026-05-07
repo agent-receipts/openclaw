@@ -7,12 +7,25 @@ export type ParameterDisclosureConfig =
   | "high"     // high-risk and critical actions only
   | string[];  // specific action type strings e.g. ["system.command.execute"]
 
+/**
+ * Daemon-forwarding config (ADR-0010). Sends a copy of every tool call to a
+ * local agent-receipts daemon over AF_UNIX. Off by default: enabling this
+ * forwards raw `input` and `output` JSON across a process boundary so the
+ * daemon can canonicalise (RFC 8785) and hash the call. The daemon does not
+ * persist the raw values — only their SHA-256 hashes appear in receipts —
+ * but the bytes are observable on the socket and in daemon memory while the
+ * frame is in flight. This is a stricter trust boundary than the in-process
+ * `parameterDisclosure` contract, so it is opt-in.
+ */
+export type DaemonForwardingConfig = boolean | { enabled?: boolean };
+
 export type AttestPluginConfig = {
   dbPath?: string;
   keyPath?: string;
   taxonomyPath?: string;
   enabled?: boolean;
   parameterDisclosure?: ParameterDisclosureConfig;
+  daemonForwarding?: DaemonForwardingConfig;
 };
 
 const DEFAULTS = {
@@ -40,6 +53,7 @@ export function resolveConfig(pluginConfig?: Record<string, unknown>): {
   taxonomyPath: string | undefined;
   enabled: boolean;
   parameterDisclosure: ParameterDisclosureConfig;
+  daemonForwarding: { enabled: boolean };
 } {
   const cfg = (pluginConfig ?? {}) as AttestPluginConfig;
   return {
@@ -48,7 +62,16 @@ export function resolveConfig(pluginConfig?: Record<string, unknown>): {
     taxonomyPath: cfg.taxonomyPath ? expandHome(cfg.taxonomyPath) : undefined,
     enabled: cfg.enabled !== false,
     parameterDisclosure: cfg.parameterDisclosure ?? false,
+    daemonForwarding: resolveDaemonForwarding(cfg.daemonForwarding),
   };
+}
+
+function resolveDaemonForwarding(
+  cfg: DaemonForwardingConfig | undefined,
+): { enabled: boolean } {
+  if (cfg === true) return { enabled: true };
+  if (cfg === false || cfg === undefined) return { enabled: false };
+  return { enabled: cfg.enabled === true };
 }
 
 /**

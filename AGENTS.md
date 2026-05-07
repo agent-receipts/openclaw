@@ -63,6 +63,7 @@ CI runs typecheck + vitest + V8 coverage via GitHub Actions.
 
 - Never commit real private keys. Test fixtures use well-known test keys only (see `src/test-helpers.ts`).
 - Parameters are never stored in plaintext by default — only SHA-256 hashes appear in receipts. The `parameterDisclosure` config is an explicit opt-in that stores named fields verbatim; do not enable it implicitly or broaden its scope.
+- The `daemonForwarding` config is also off by default. Enabling it forwards raw `input` and `output` JSON to the agent-receipts daemon over AF_UNIX so the daemon can canonicalise and hash; the daemon does not persist the raw values, but they cross a process trust boundary. Do not enable it implicitly, default it to `true`, or change the hook code path so frames are forwarded without `daemonForwarding` being set.
 - Ed25519 is the only supported signing algorithm. Do not introduce alternative or weaker schemes.
 - Validate all inputs at trust boundaries (function parameters, environment variables, stored data). Crypto code must reject invalid inputs explicitly, not silently degrade.
 - Report vulnerabilities via [GitHub Security Advisories](https://github.com/agent-receipts/openclaw/security/advisories/new), not public issues. See [SECURITY.md](SECURITY.md).
