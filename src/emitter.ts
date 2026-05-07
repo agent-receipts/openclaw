@@ -173,6 +173,12 @@ export class Emitter {
   private closed = false;
   /** Serialise writes so concurrent emit() calls cannot interleave bytes. */
   private writeQueue: Promise<void> = Promise.resolve();
+  /**
+   * Set transiently when an async 'error' event has already logged a drop
+   * for the live conn, so the synchronous write callback that follows
+   * (with the same root cause) does not double-log.
+   */
+  private suppressNextWriteLog = false;
 
   constructor(options: EmitterOptions = {}) {
     const socketPath = options.socketPath ?? defaultSocketPath();
@@ -234,7 +240,7 @@ export class Emitter {
       },
       ...(parsedInput?.ok ? { input: parsedInput.value } : {}),
       ...(parsedOutput?.ok ? { output: parsedOutput.value } : {}),
-      ...(ev.error ? { error: ev.error } : {}),
+      ...(ev.error !== undefined ? { error: ev.error } : {}),
       decision: ev.decision,
     };
 
@@ -309,6 +315,12 @@ export class Emitter {
 
     const writeErr = await this.writeFrame(body);
     if (writeErr !== null) {
+      // If handleConnError already logged this for us (peer reset surfaced
+      // asynchronously), skip the duplicate "write" line.
+      if (!this.suppressNextWriteLog) {
+        this.logDrop("write", writeErr);
+      }
+      this.suppressNextWriteLog = false;
       this.dropConn();
       await this.retryWrite(body);
     }
@@ -338,7 +350,10 @@ export class Emitter {
     }
     const retryErr = await this.writeFrame(body);
     if (retryErr !== null) {
-      this.logDrop("write", retryErr);
+      if (!this.suppressNextWriteLog) {
+        this.logDrop("write", retryErr);
+      }
+      this.suppressNextWriteLog = false;
       this.dropConn();
     }
   }
@@ -371,12 +386,21 @@ export class Emitter {
         resolve(result);
       };
 
+      // Pre-connect error listener: covers ENOENT/ECONNREFUSED etc. Removed
+      // once the connection succeeds and replaced by the long-lived 'error'
+      // listener installed in the connect callback below.
+      const preConnectError = (err: Error): void => {
+        if (!settled) {
+          settle(err);
+        }
+      };
       const socket = createConnection({ path: this.socketPath }, () => {
         if (settled) {
           // Lost the race against the timeout — drop this orphan socket.
           socket.destroy();
           return;
         }
+        socket.removeListener("error", preConnectError);
         // Attach a long-lived error handler so that a later peer reset
         // (daemon crash, socket removed) does NOT surface as an
         // unhandled 'error' event and crash the host process.
@@ -389,14 +413,7 @@ export class Emitter {
         settle(null);
       });
 
-      // Pre-connect error listener: covers ENOENT/ECONNREFUSED etc.
-      // Replaced by the long-lived 'error' listener above once the
-      // connection is live and settle(null) has fired.
-      socket.once("error", (err) => {
-        if (!settled) {
-          settle(err);
-        }
-      });
+      socket.once("error", preConnectError);
 
       timer = setTimeout(() => {
         socket.destroy();
@@ -418,6 +435,9 @@ export class Emitter {
     if (this.conn === socket) {
       this.conn = null;
       socket.destroy();
+      // The pending write callback will resolve with the same root cause —
+      // suppress its drop log so a single peer reset produces a single line.
+      this.suppressNextWriteLog = true;
     }
     this.logDrop("conn", err);
   }

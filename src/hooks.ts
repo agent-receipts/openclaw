@@ -21,7 +21,17 @@ import {
 import { classify, type ExtendedTaxonomyMapping, type TaxonomyPattern } from "./classify.js";
 import { type ChainsMap, type ChainState, getChainState, advanceChain } from "./chain.js";
 import type { ParameterDisclosureConfig } from "./config.js";
-import type { Emitter } from "./emitter.js";
+import type { EmitEvent } from "./emitter.js";
+
+/**
+ * Minimal structural interface the hook code uses from the daemon emitter.
+ * Defined here (rather than importing the concrete `Emitter` class) so that
+ * test doubles without the class's private fields are assignable, and so
+ * the hook path stays decoupled from any unused emitter surface.
+ */
+export interface EmitterLike {
+  emit(ev: EmitEvent): Promise<Error | null>;
+}
 
 export type PendingCall = {
   toolName: string;
@@ -74,7 +84,7 @@ export type HookDeps = {
   /** Optional daemon emitter. When present, tool-call events are forwarded
    *  to the agent-receipts daemon over AF_UNIX (ADR-0010). Fire-and-forget:
    *  emit failures are silently dropped and never affect receipt creation. */
-  emitter?: Emitter;
+  emitter?: EmitterLike;
 };
 
 export function shouldDisclose(
@@ -153,8 +163,11 @@ export function beforeToolCall(
   });
 
   // Forward to daemon — fire-and-forget, failures are silently dropped.
-  // Wrap in try/catch so a non-serialisable param (BigInt, circular ref)
-  // cannot derail the receipt-creation hook.
+  // Defensive try/catch: in practice `canonicalize(event.params)` above
+  // already runs and rejects the bad-input cases that JSON.stringify would
+  // throw on (BigInt, cycles), so we'd have crashed before reaching here.
+  // The catch is kept so a future change to the order/content of this hook
+  // can't accidentally leak an emitter exception into the host.
   if (deps.emitter) {
     try {
       const inputJson = JSON.stringify(event.params);

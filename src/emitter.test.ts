@@ -11,11 +11,23 @@
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { mkdtempSync, rmSync, existsSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createServer, type Server } from "node:net";
 import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import { Emitter, defaultSocketPath, MAX_FRAME_SIZE } from "./emitter.js";
+
+// macOS AF_UNIX sun_path is capped at 104 bytes. Node's os.tmpdir() on
+// macOS returns "/var/folders/.../T/" which can push our test socket paths
+// near the limit. Use /tmp directly (a 4-byte prefix that resolves to the
+// same /private/tmp on macOS) so paths stay well under the cap, regardless
+// of how long mkdtemp's random suffix grows in future Node versions. See
+// https://man7.org/linux/man-pages/man7/unix.7.html for the cap.
+const SHORT_TMP = "/tmp";
+const TMP_PREFIX = "oc-em-";
+
+function makeShortTmpDir(): string {
+  return mkdtempSync(join(SHORT_TMP, TMP_PREFIX));
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -198,7 +210,7 @@ describe("emit() validation", () => {
   let emitter: Emitter;
 
   beforeEach(() => {
-    tmpDir = mkdtempSync(join(tmpdir(), "openclaw-emitter-test-"));
+    tmpDir = makeShortTmpDir();
     const socketPath = join(tmpDir, "events.sock");
     emitter = new Emitter({ socketPath });
   });
@@ -278,7 +290,7 @@ describe("session_id stability", () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = mkdtempSync(join(tmpdir(), "openclaw-session-test-"));
+    tmpDir = makeShortTmpDir();
   });
 
   afterEach(() => {
@@ -308,7 +320,7 @@ describe("fire-and-forget (daemon down)", () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = mkdtempSync(join(tmpdir(), "openclaw-ff-test-"));
+    tmpDir = makeShortTmpDir();
   });
 
   afterEach(() => {
@@ -354,7 +366,7 @@ describe("frame round-trip (in-process server)", () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = mkdtempSync(join(tmpdir(), "openclaw-rt-test-"));
+    tmpDir = makeShortTmpDir();
   });
 
   afterEach(() => {
@@ -393,7 +405,10 @@ describe("frame round-trip (in-process server)", () => {
     expect(parsed.output).toEqual({ exitCode: 0 });
     // ts_emit must look like RFC3339Nano (ends in Z, has nanoseconds)
     expect(typeof parsed.ts_emit).toBe("string");
-    expect(parsed.ts_emit as string).toMatch(/\d{9}Z$/);
+    // Match Go's RFC3339Nano: ".789000000Z" — exactly nine fractional digits
+    // preceded by a literal dot. The leading dot pins the format so we'd
+    // catch a regression that drops fractional seconds entirely.
+    expect(parsed.ts_emit as string).toMatch(/\.\d{9}Z$/);
 
     emitter.close();
     await close();
@@ -441,6 +456,30 @@ describe("frame round-trip (in-process server)", () => {
     expect(parsed.error).toBe("tool crashed");
     expect(parsed.decision).toBe("denied");
 
+    emitter.close();
+    await close();
+  });
+
+  it("preserves an explicit empty-string error (no falsy drop)", async () => {
+    const socketPath = join(tmpDir, "empty-err.sock");
+    const { frames, close } = createEchoServer(socketPath);
+
+    const emitter = new Emitter({ socketPath });
+    await emitter.emit({
+      tool: { name: "noop" },
+      error: "",
+      decision: "allowed",
+    });
+
+    await waitFor(() => frames.length >= 1);
+
+    const parsed = JSON.parse(frames[0].toString("utf8")) as Record<
+      string,
+      unknown
+    >;
+    // Caller passed an empty string deliberately — preserve it on the wire
+    // rather than silently dropping the field via a falsy check.
+    expect(parsed.error).toBe("");
     emitter.close();
     await close();
   });
@@ -594,6 +633,7 @@ describe("frame round-trip (in-process server)", () => {
       s1.close((e) => (e ? reject(e) : resolve())),
     );
   });
+
 });
 
 // ---------------------------------------------------------------------------
@@ -608,7 +648,7 @@ describe.skipIf(!DAEMON_AVAILABLE)(
     let socketPath: string;
 
     beforeEach(async () => {
-      tmpDir = mkdtempSync(join(tmpdir(), "openclaw-daemon-test-"));
+      tmpDir = makeShortTmpDir();
       const started = startDaemon(tmpDir);
       proc = started.proc;
       socketPath = started.socketPath;
