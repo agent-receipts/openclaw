@@ -80,7 +80,11 @@ export default definePluginEntry({
     const socketPath = defaultSocketPath();
     if (socketPath) {
       try {
-        emitter = new Emitter();
+        // Pass the resolved socketPath explicitly so the emitter cannot
+        // re-resolve to a different value if env vars change between this
+        // check and the constructor call (the logged path must match the
+        // one actually used).
+        emitter = new Emitter({ socketPath });
         api.logger.info(
           `agent-receipts: daemon emitter ready (socket=${socketPath}, session_id=${emitter.sessionId})`,
         );

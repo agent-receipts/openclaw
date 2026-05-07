@@ -39,7 +39,11 @@ const DIAL_TIMEOUT_MS = 25;
 const WRITE_TIMEOUT_MS = 100;
 
 /** Valid decision values (lowercase to match the wire format). */
-const VALID_DECISIONS = new Set(["allowed", "denied", "pending"]);
+const VALID_DECISIONS = Object.freeze([
+  "allowed",
+  "denied",
+  "pending",
+] as const);
 
 /** One tool invocation to forward to the daemon. */
 export interface EmitEvent {
@@ -178,9 +182,8 @@ export class Emitter {
       );
     }
     this.socketPath = socketPath;
-    this.sessionId = options.sessionId?.trim()
-      ? options.sessionId
-      : randomUUID();
+    const trimmedSessionId = options.sessionId?.trim();
+    this.sessionId = trimmedSessionId ? trimmedSessionId : randomUUID();
     this.debugLog = options.debugLog ?? ((): void => {});
   }
 
@@ -199,16 +202,25 @@ export class Emitter {
     if (!ev.tool.name) {
       return new Error("emitter: missing tool.name");
     }
-    if (!VALID_DECISIONS.has(ev.decision)) {
+    if (!VALID_DECISIONS.includes(ev.decision)) {
       return new Error(
         `emitter: invalid decision "${ev.decision}" (want allowed|denied|pending)`,
       );
     }
-    if (ev.input !== undefined && !isValidJson(ev.input)) {
-      return new Error("emitter: input is not valid JSON");
+
+    let parsedInput: ParsedJson | undefined;
+    if (ev.input !== undefined) {
+      parsedInput = tryParseJson(ev.input);
+      if (!parsedInput.ok) {
+        return new Error("emitter: input is not valid JSON");
+      }
     }
-    if (ev.output !== undefined && !isValidJson(ev.output)) {
-      return new Error("emitter: output is not valid JSON");
+    let parsedOutput: ParsedJson | undefined;
+    if (ev.output !== undefined) {
+      parsedOutput = tryParseJson(ev.output);
+      if (!parsedOutput.ok) {
+        return new Error("emitter: output is not valid JSON");
+      }
     }
 
     const wireFrame: WireFrame = {
@@ -220,8 +232,8 @@ export class Emitter {
         ...(ev.tool.server ? { server: ev.tool.server } : {}),
         name: ev.tool.name,
       },
-      ...(ev.input !== undefined ? { input: parseJsonRaw(ev.input) } : {}),
-      ...(ev.output !== undefined ? { output: parseJsonRaw(ev.output) } : {}),
+      ...(parsedInput?.ok ? { input: parsedInput.value } : {}),
+      ...(parsedOutput?.ok ? { output: parsedOutput.value } : {}),
       ...(ev.error ? { error: ev.error } : {}),
       decision: ev.decision,
     };
@@ -285,6 +297,13 @@ export class Emitter {
     const dialErr = await this.dialIfNeeded();
     if (dialErr !== null) {
       this.logDrop("dial", dialErr);
+      return null;
+    }
+
+    // close() may have run while we were dialing; in that case dialIfNeeded()
+    // still opened a fresh socket — discard it and bail before writing.
+    if (this.closed) {
+      this.dropConn();
       return null;
     }
 
@@ -436,20 +455,22 @@ export class Emitter {
   }
 }
 
-/** Returns true when the string is syntactically valid JSON. */
-function isValidJson(s: string): boolean {
-  try {
-    JSON.parse(s);
-    return true;
-  } catch {
-    return false;
-  }
-}
+/**
+ * Result of attempting to parse a JSON string. `ok` distinguishes a valid
+ * `null` value (`{ ok: true, value: null }`) from a parse failure
+ * (`{ ok: false }`), so callers can branch unambiguously.
+ */
+type ParsedJson = { ok: true; value: unknown } | { ok: false };
 
 /**
- * Parse a raw JSON string into a value that round-trips correctly through
- * JSON.stringify without double-encoding.
+ * Parse a raw JSON string once. Returns `{ ok: true, value }` on success or
+ * `{ ok: false }` on syntactic failure. Combines the previous validity check
+ * and parse step into a single pass so we don't pay JSON.parse twice.
  */
-function parseJsonRaw(s: string): unknown {
-  return JSON.parse(s);
+function tryParseJson(s: string): ParsedJson {
+  try {
+    return { ok: true, value: JSON.parse(s) };
+  } catch {
+    return { ok: false };
+  }
 }

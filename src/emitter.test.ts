@@ -1,10 +1,9 @@
 /**
  * Tests for the fire-and-forget AF_UNIX socket emitter.
  *
- * The round-trip tests spin up the real daemon binary
- * (built from /Users/ottojongerius/repos/agent-receipts/ar/daemon/)
- * as a subprocess and verify that the emitter's wire frames are
- * accepted by the daemon without error.
+ * The round-trip tests spin up the real daemon binary (built from
+ * `daemon/` in the agent-receipts/ar repo) as a subprocess and verify
+ * that the emitter's wire frames are accepted by the daemon without error.
  *
  * Tests that require a running daemon are skipped when the binary
  * is absent (CI without a Go toolchain step, etc.).
@@ -151,23 +150,16 @@ describe("defaultSocketPath", () => {
 // ---------------------------------------------------------------------------
 
 describe("Emitter constructor", () => {
-  it("throws when no socket path available and platform has no default", () => {
-    // Force an unknown platform by clearing env and overriding via socketPath
-    // — just test the guard via a blank socketPath option.
-    // We test by passing socketPath="" via a workaround: temporarily clear env
-    // and rely on the fact that on darwin/linux it would succeed. Instead test
-    // the explicit empty guard through a monkey-patch approach.
-    //
-    // The real guard is: new Emitter() on an unsupported platform.
-    // We simulate it by just verifying the happy path here — the error path
-    // is exercised in the platform-agnostic way below.
+  it("constructs with an explicit socketPath and exposes a session_id", () => {
     const e = new Emitter({ socketPath: "/tmp/test.sock" });
     expect(e.sessionId).toBeTruthy();
     e.close();
   });
 
   it("throws for empty socketPath option", () => {
-    // The Emitter constructor guards against empty string.
+    // The Emitter constructor guards against empty string — covers the
+    // "no default socket path on this platform" path in a platform-agnostic
+    // way (no need to monkey-patch process.platform).
     expect(
       () => new Emitter({ socketPath: "" }),
     ).toThrow(/no default socket path/);

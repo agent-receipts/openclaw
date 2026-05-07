@@ -275,6 +275,17 @@ export async function afterToolCall(
   // Forward to daemon — fire-and-forget, failures are silently dropped.
   // Wrap in try/catch so a non-serialisable param/result (BigInt, circular
   // ref) cannot derail the rest of the hook.
+  //
+  // The daemon receives raw input/output here so it can perform RFC 8785
+  // canonicalisation and SHA-256 hashing. Raw values are NOT persisted —
+  // only their hashes appear in receipts (see ADR-0010). This addresses
+  // the parameter-disclosure concern: the daemon needs the raw bytes to
+  // produce a canonical hash, but it does not store them.
+  //
+  // `decision` reports the policy outcome only. A tool that ran (was
+  // allowed by policy) but errored at runtime is still `allowed`; the
+  // failure surfaces via the `error` field. Use `denied` only when the
+  // policy layer blocks a call before it executes.
   if (deps.emitter) {
     try {
       const inputJson = JSON.stringify(stashed?.params ?? event.params);
@@ -285,7 +296,7 @@ export async function afterToolCall(
         ...(inputJson !== undefined ? { input: inputJson } : {}),
         ...(resultJson !== undefined ? { output: resultJson } : {}),
         ...(event.error !== undefined ? { error: event.error } : {}),
-        decision: event.error ? "denied" : "allowed",
+        decision: "allowed",
       });
     } catch (err) {
       deps.logger.warn(
