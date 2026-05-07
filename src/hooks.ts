@@ -153,12 +153,21 @@ export function beforeToolCall(
   });
 
   // Forward to daemon — fire-and-forget, failures are silently dropped.
+  // Wrap in try/catch so a non-serialisable param (BigInt, circular ref)
+  // cannot derail the receipt-creation hook.
   if (deps.emitter) {
-    void deps.emitter.emit({
-      tool: { name: event.toolName },
-      input: JSON.stringify(event.params),
-      decision: "pending",
-    });
+    try {
+      const inputJson = JSON.stringify(event.params);
+      void deps.emitter.emit({
+        tool: { name: event.toolName },
+        ...(inputJson !== undefined ? { input: inputJson } : {}),
+        decision: "pending",
+      });
+    } catch (err) {
+      deps.logger.warn(
+        `agent-receipts: emitter pre-call forward skipped: ${String(err)}`,
+      );
+    }
   }
 }
 
@@ -264,14 +273,24 @@ export async function afterToolCall(
   );
 
   // Forward to daemon — fire-and-forget, failures are silently dropped.
+  // Wrap in try/catch so a non-serialisable param/result (BigInt, circular
+  // ref) cannot derail the rest of the hook.
   if (deps.emitter) {
-    const resultJson = event.result !== undefined ? JSON.stringify(event.result) : undefined;
-    void deps.emitter.emit({
-      tool: { name: event.toolName },
-      input: JSON.stringify(stashed?.params ?? event.params),
-      ...(resultJson !== undefined ? { output: resultJson } : {}),
-      ...(event.error !== undefined ? { error: event.error } : {}),
-      decision: event.error ? "denied" : "allowed",
-    });
+    try {
+      const inputJson = JSON.stringify(stashed?.params ?? event.params);
+      const resultJson =
+        event.result !== undefined ? JSON.stringify(event.result) : undefined;
+      void deps.emitter.emit({
+        tool: { name: event.toolName },
+        ...(inputJson !== undefined ? { input: inputJson } : {}),
+        ...(resultJson !== undefined ? { output: resultJson } : {}),
+        ...(event.error !== undefined ? { error: event.error } : {}),
+        decision: event.error ? "denied" : "allowed",
+      });
+    } catch (err) {
+      deps.logger.warn(
+        `agent-receipts: emitter post-call forward skipped: ${String(err)}`,
+      );
+    }
   }
 }

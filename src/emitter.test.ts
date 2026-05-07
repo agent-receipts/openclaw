@@ -11,15 +11,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import {
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  rmSync,
-  existsSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdtempSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createServer, type Server } from "node:net";
@@ -29,13 +21,6 @@ import { Emitter, defaultSocketPath, MAX_FRAME_SIZE } from "./emitter.js";
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/** Build a length-prefixed frame identical to what the emitter writes. */
-function readFrame(data: Buffer): { length: number; body: Buffer } {
-  const length = data.readUInt32BE(0);
-  const body = data.subarray(4, 4 + length);
-  return { length, body };
-}
 
 /** Create an in-process echo server that records received frames. */
 function createEchoServer(socketPath: string): {
@@ -218,12 +203,11 @@ describe("Emitter constructor", () => {
 
 describe("emit() validation", () => {
   let tmpDir: string;
-  let socketPath: string;
   let emitter: Emitter;
 
   beforeEach(() => {
     tmpDir = mkdtempSync(join(tmpdir(), "openclaw-emitter-test-"));
-    socketPath = join(tmpDir, "events.sock");
+    const socketPath = join(tmpDir, "events.sock");
     emitter = new Emitter({ socketPath });
   });
 
@@ -544,7 +528,7 @@ describe("frame round-trip (in-process server)", () => {
     10_000,
   );
 
-  it("concurrent emits do not interleave bytes", async () => {
+  it("concurrent emits do not interleave bytes and preserve order", async () => {
     const socketPath = join(tmpDir, "concurrent.sock");
     const { frames, close } = createEchoServer(socketPath);
 
@@ -564,13 +548,59 @@ describe("frame round-trip (in-process server)", () => {
 
     // All emits succeed
     expect(results.every((r) => r === null)).toBe(true);
-    // All frames are valid JSON
-    for (const frame of frames) {
-      expect(() => JSON.parse(frame.toString("utf8"))).not.toThrow();
+    // All frames are valid JSON, and the write queue preserved submission
+    // order so frame[i].tool.name == "tool-i".
+    for (let i = 0; i < N; i++) {
+      const parsed = JSON.parse(frames[i].toString("utf8")) as {
+        tool: { name: string };
+      };
+      expect(parsed.tool.name).toBe(`tool-${i}`);
     }
 
     emitter.close();
     await close();
+  });
+
+  it("does not crash the host when peer resets after dial succeeds", async () => {
+    // Reproduces the unhandled 'error' event hazard: server accepts the
+    // connection, the emitter caches it, then the server forcefully drops
+    // the socket. Without a long-lived 'error' listener on the conn, Node
+    // surfaces the peer reset as an uncaught exception and tears the
+    // process down. With the fix, the next emit() simply re-dials.
+    const socketPath = join(tmpDir, "peer-reset.sock");
+
+    const s1 = createServer((socket) => {
+      // Drop the connection as soon as it's established.
+      setImmediate(() => socket.destroy());
+    });
+    await new Promise<void>((resolve) => s1.listen(socketPath, resolve));
+
+    const emitter = new Emitter({ socketPath });
+
+    // First emit dials and writes (may or may not race with the server's
+    // destroy — both outcomes are acceptable: the framework must not crash).
+    const err1 = await emitter.emit({
+      tool: { name: "first" },
+      decision: "allowed",
+    });
+    expect(err1).toBeNull();
+
+    // Give the peer reset time to propagate.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Second emit should not throw and must redial cleanly. Since the
+    // server is still alive (just kicks off connections), the dial works
+    // even though the previous conn was reset.
+    const err2 = await emitter.emit({
+      tool: { name: "second" },
+      decision: "allowed",
+    });
+    expect(err2).toBeNull();
+
+    emitter.close();
+    await new Promise<void>((resolve, reject) =>
+      s1.close((e) => (e ? reject(e) : resolve())),
+    );
   });
 });
 

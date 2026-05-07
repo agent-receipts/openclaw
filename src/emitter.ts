@@ -276,6 +276,12 @@ export class Emitter {
    * and re-write is attempted before giving up.
    */
   private async doWrite(body: Buffer): Promise<Error | null> {
+    // Re-check `closed` at execution time: emit() might have validated
+    // and enqueued, then close() ran while we were waiting in the queue.
+    if (this.closed) {
+      return null;
+    }
+
     const dialErr = await this.dialIfNeeded();
     if (dialErr !== null) {
       this.logDrop("dial", dialErr);
@@ -297,9 +303,18 @@ export class Emitter {
    * into this scope.
    */
   private async retryWrite(body: Buffer): Promise<void> {
+    // close() may have run while we awaited the failed first write — bail
+    // out so we don't open a fresh connection on a closed emitter.
+    if (this.closed) {
+      return;
+    }
     const redialErr = await this.dialIfNeeded();
     if (redialErr !== null) {
       this.logDrop("dial", redialErr);
+      return;
+    }
+    if (this.closed) {
+      this.dropConn();
       return;
     }
     const retryErr = await this.writeFrame(body);
@@ -323,22 +338,69 @@ export class Emitter {
       return Promise.resolve(null);
     }
     return new Promise((resolve) => {
-      const timer = setTimeout(() => {
-        socket.destroy();
-        resolve(new Error(`dial timeout after ${DIAL_TIMEOUT_MS}ms`));
-      }, DIAL_TIMEOUT_MS);
+      // settled guards against the timer firing AND the connect/error
+      // listeners firing — only the first outcome wins.
+      let settled = false;
+      let timer: NodeJS.Timeout | null = null;
+      const settle = (result: Error | null): void => {
+        if (settled) return;
+        settled = true;
+        if (timer !== null) {
+          clearTimeout(timer);
+          timer = null;
+        }
+        resolve(result);
+      };
 
       const socket = createConnection({ path: this.socketPath }, () => {
-        clearTimeout(timer);
+        if (settled) {
+          // Lost the race against the timeout — drop this orphan socket.
+          socket.destroy();
+          return;
+        }
+        // Attach a long-lived error handler so that a later peer reset
+        // (daemon crash, socket removed) does NOT surface as an
+        // unhandled 'error' event and crash the host process.
+        // The next emit() will see the broken conn via writeFrame's
+        // callback and drop+redial transparently.
+        socket.on("error", (err) => {
+          this.handleConnError(socket, err);
+        });
         this.conn = socket;
-        resolve(null);
+        settle(null);
       });
 
+      // Pre-connect error listener: covers ENOENT/ECONNREFUSED etc.
+      // Replaced by the long-lived 'error' listener above once the
+      // connection is live and settle(null) has fired.
       socket.once("error", (err) => {
-        clearTimeout(timer);
-        resolve(err);
+        if (!settled) {
+          settle(err);
+        }
       });
+
+      timer = setTimeout(() => {
+        socket.destroy();
+        settle(new Error(`dial timeout after ${DIAL_TIMEOUT_MS}ms`));
+      }, DIAL_TIMEOUT_MS);
     });
+  }
+
+  /**
+   * Handle a post-connect 'error' event on a live connection. If the
+   * erroring socket is still our active conn, drop it so the next emit()
+   * re-dials. We guard against stale events from sockets we already
+   * destroyed (e.g. via dropConn during retry).
+   */
+  private handleConnError(
+    socket: ReturnType<typeof createConnection>,
+    err: Error,
+  ): void {
+    if (this.conn === socket) {
+      this.conn = null;
+      socket.destroy();
+    }
+    this.logDrop("conn", err);
   }
 
   /** Write a 4-byte big-endian length prefix followed by the body. */
