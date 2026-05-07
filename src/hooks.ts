@@ -21,6 +21,7 @@ import {
 import { classify, type ExtendedTaxonomyMapping, type TaxonomyPattern } from "./classify.js";
 import { type ChainsMap, type ChainState, getChainState, advanceChain } from "./chain.js";
 import type { ParameterDisclosureConfig } from "./config.js";
+import type { Emitter } from "./emitter.js";
 
 export type PendingCall = {
   toolName: string;
@@ -70,6 +71,10 @@ export type HookDeps = {
   mappings: ExtendedTaxonomyMapping[];
   patterns: TaxonomyPattern[];
   parameterDisclosure?: ParameterDisclosureConfig;
+  /** Optional daemon emitter. When present, tool-call events are forwarded
+   *  to the agent-receipts daemon over AF_UNIX (ADR-0010). Fire-and-forget:
+   *  emit failures are silently dropped and never affect receipt creation. */
+  emitter?: Emitter;
 };
 
 export function shouldDisclose(
@@ -127,7 +132,8 @@ function evictStalePending(pending: PendingMap): void {
 }
 
 /**
- * before_tool_call handler — stash context for receipt creation.
+ * before_tool_call handler — stash context for receipt creation and forward
+ * a "pending" event to the daemon emitter when one is configured.
  */
 export function beforeToolCall(
   event: { toolName: string; params: Record<string, unknown>; runId?: string; toolCallId?: string },
@@ -145,6 +151,15 @@ export function beforeToolCall(
     sessionKey: ctx.sessionKey ?? "default",
     sessionId: ctx.sessionId,
   });
+
+  // Forward to daemon — fire-and-forget, failures are silently dropped.
+  if (deps.emitter) {
+    void deps.emitter.emit({
+      tool: { name: event.toolName },
+      input: JSON.stringify(event.params),
+      decision: "pending",
+    });
+  }
 }
 
 /**
@@ -247,4 +262,16 @@ export async function afterToolCall(
   deps.logger.info(
     `agent-receipts: receipt ${signed.id} (${classification.action_type}, ${classification.risk_level}) → chain ${chain.chainId} seq ${nextSequence}`,
   );
+
+  // Forward to daemon — fire-and-forget, failures are silently dropped.
+  if (deps.emitter) {
+    const resultJson = event.result !== undefined ? JSON.stringify(event.result) : undefined;
+    void deps.emitter.emit({
+      tool: { name: event.toolName },
+      input: JSON.stringify(stashed?.params ?? event.params),
+      ...(resultJson !== undefined ? { output: resultJson } : {}),
+      ...(event.error !== undefined ? { error: event.error } : {}),
+      decision: event.error ? "denied" : "allowed",
+    });
+  }
 }

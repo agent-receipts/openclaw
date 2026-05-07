@@ -20,6 +20,7 @@ import {
   type HookDeps,
   type PendingMap,
 } from "./hooks.js";
+import { Emitter, defaultSocketPath } from "./emitter.js";
 import { resetChain, getChainId, type ChainsMap, type ChainState } from "./chain.js";
 import { createQueryReceiptsToolFactory, createVerifyChainToolFactory } from "./tools.js";
 
@@ -60,6 +61,19 @@ export default definePluginEntry({
 
     const agentId = api.id;
 
+    // Attempt to create a daemon emitter (fire-and-forget; optional).
+    // If no socket path is configured on the current platform, skip silently.
+    let emitter: Emitter | undefined;
+    const socketPath = defaultSocketPath();
+    if (socketPath) {
+      try {
+        emitter = new Emitter({ sessionId: api.id });
+        api.logger.info(`agent-receipts: daemon emitter ready (socket=${socketPath})`);
+      } catch (err) {
+        api.logger.warn(`agent-receipts: daemon emitter unavailable: ${String(err)}`);
+      }
+    }
+
     const hookDeps: HookDeps = {
       store,
       privateKey: keys.privateKey,
@@ -71,6 +85,7 @@ export default definePluginEntry({
       mappings,
       patterns,
       parameterDisclosure: cfg.parameterDisclosure,
+      emitter,
     };
 
     // --- Hooks ---
@@ -120,14 +135,15 @@ export default definePluginEntry({
       name: "ar_verify_chain",
     });
 
-    // --- Service: clean up store on shutdown ---
+    // --- Service: clean up store and emitter on shutdown ---
 
     api.registerService({
       id: "ar-store",
       async start() {
-        // Store is already opened during register — nothing to do
+        // Store and emitter are already initialised during register — nothing to do
       },
       async stop() {
+        emitter?.close();
         store.close();
         api.logger.info("agent-receipts: receipt store closed");
       },
