@@ -33,10 +33,10 @@ export const SUPPORTED_FRAME_VERSION = "1";
 export const CHANNEL = "openclaw";
 
 /** Dial timeout in milliseconds — caps how long emit() blocks reaching the daemon. */
-const DIAL_TIMEOUT_MS = 25;
+export const DIAL_TIMEOUT_MS = 25;
 
 /** Write deadline in milliseconds — caps how long a single frame write can block. */
-const WRITE_TIMEOUT_MS = 100;
+export const WRITE_TIMEOUT_MS = 100;
 
 /** Valid decision values (lowercase to match the wire format). */
 const VALID_DECISIONS = Object.freeze([
@@ -55,13 +55,17 @@ export interface EmitEvent {
     server?: string;
   };
   /**
-   * Raw JSON string for the tool input. Forwarded verbatim — NOT
-   * re-serialised. Must be valid JSON when provided.
+   * JSON string for the tool input. Must be valid JSON when provided.
+   * Parsed once and embedded as the `input` value of the wire frame
+   * (which is itself JSON-serialised before sending). The original byte
+   * sequence is NOT preserved — the daemon receives canonical-equivalent
+   * JSON, not the caller's exact source string.
    */
   input?: string;
   /**
-   * Raw JSON string for the tool output. Forwarded verbatim — NOT
-   * re-serialised. Must be valid JSON when provided.
+   * JSON string for the tool output. Must be valid JSON when provided.
+   * Parsed and embedded the same way as `input` — see that field for the
+   * exact serialisation contract.
    */
   output?: string;
   /** Human-readable error message when the tool call failed. */
@@ -205,7 +209,7 @@ export class Emitter {
     if (this.closed) {
       return new Error("emitter: closed");
     }
-    if (!ev.tool.name) {
+    if (!ev.tool.name || ev.tool.name.trim() === "") {
       return new Error("emitter: missing tool.name");
     }
     if (!VALID_DECISIONS.includes(ev.decision)) {
@@ -366,7 +370,12 @@ export class Emitter {
     }
   }
 
-  /** Dial the daemon socket if not already connected. */
+  /**
+   * Dial the daemon socket if not already connected. The closed state is
+   * also re-checked inside the connect callback so a close() that races
+   * with a queued emit can drop the orphan socket immediately rather than
+   * keeping the event loop alive during shutdown.
+   */
   private dialIfNeeded(): Promise<Error | null> {
     if (this.conn !== null) {
       return Promise.resolve(null);
@@ -398,6 +407,16 @@ export class Emitter {
         if (settled) {
           // Lost the race against the timeout — drop this orphan socket.
           socket.destroy();
+          return;
+        }
+        if (this.closed) {
+          // close() ran while we were dialing. Don't register this
+          // socket on `this.conn` (which would keep the event loop
+          // alive); destroy it and tell doWrite() to bail silently via
+          // the post-dial closed check.
+          socket.removeListener("error", preConnectError);
+          socket.destroy();
+          settle(null);
           return;
         }
         socket.removeListener("error", preConnectError);

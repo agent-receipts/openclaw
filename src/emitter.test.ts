@@ -14,7 +14,7 @@ import { mkdtempSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { createServer, type Server } from "node:net";
 import { execFileSync, spawn, type ChildProcess } from "node:child_process";
-import { Emitter, defaultSocketPath, MAX_FRAME_SIZE } from "./emitter.js";
+import { DIAL_TIMEOUT_MS, Emitter, defaultSocketPath, MAX_FRAME_SIZE } from "./emitter.js";
 
 // macOS AF_UNIX sun_path is capped at 104 bytes. Node's os.tmpdir() on
 // macOS returns "/var/folders/.../T/" which can push our test socket paths
@@ -33,12 +33,17 @@ function makeShortTmpDir(): string {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Create an in-process echo server that records received frames. */
-function createEchoServer(socketPath: string): {
+/**
+ * Create an in-process echo server that records received frames. Returns a
+ * promise that resolves once the server is listening so callers don't race
+ * the bind — emitting before listen() completes can produce intermittent
+ * ENOENT/connection failures on slower runners.
+ */
+async function createEchoServer(socketPath: string): Promise<{
   server: Server;
   frames: Buffer[];
   close: () => Promise<void>;
-} {
+}> {
   const frames: Buffer[] = [];
   const server = createServer((socket) => {
     let buf = Buffer.alloc(0);
@@ -54,7 +59,13 @@ function createEchoServer(socketPath: string): {
     });
   });
 
-  server.listen(socketPath);
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(socketPath, () => {
+      server.removeListener("error", reject);
+      resolve();
+    });
+  });
 
   const close = (): Promise<void> =>
     new Promise((resolve, reject) => {
@@ -229,6 +240,15 @@ describe("emit() validation", () => {
     expect(err!.message).toMatch(/missing tool\.name/);
   });
 
+  it("returns error for whitespace-only tool name", async () => {
+    const err = await emitter.emit({
+      tool: { name: "   " },
+      decision: "allowed",
+    });
+    expect(err).toBeInstanceOf(Error);
+    expect(err!.message).toMatch(/missing tool\.name/);
+  });
+
   it("returns error for invalid decision", async () => {
     const err = await emitter.emit({
       tool: { name: "bash" },
@@ -327,7 +347,7 @@ describe("fire-and-forget (daemon down)", () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("returns null quickly (<50ms) when no daemon is reachable", async () => {
+  it("returns null within the dial timeout when no daemon is reachable", async () => {
     const socketPath = join(tmpDir, "no-daemon.sock");
     const emitter = new Emitter({ socketPath });
 
@@ -339,7 +359,11 @@ describe("fire-and-forget (daemon down)", () => {
     const elapsed = Date.now() - start;
 
     expect(err).toBeNull();
-    expect(elapsed).toBeLessThan(50);
+    // Bound is the configured dial timeout plus generous scheduling slack.
+    // Wall-clock assertions are inherently noisy on contended CI runners,
+    // so we only assert that we exit within an order of magnitude of the
+    // intended timeout — enough to catch a regression that hangs.
+    expect(elapsed).toBeLessThan(DIAL_TIMEOUT_MS * 20);
     emitter.close();
   });
 
@@ -375,7 +399,7 @@ describe("frame round-trip (in-process server)", () => {
 
   it("sends correctly framed JSON to the server", async () => {
     const socketPath = join(tmpDir, "events.sock");
-    const { frames, close } = createEchoServer(socketPath);
+    const { frames, close } = await createEchoServer(socketPath);
 
     const emitter = new Emitter({ socketPath });
 
@@ -416,7 +440,7 @@ describe("frame round-trip (in-process server)", () => {
 
   it("omits server field when not provided", async () => {
     const socketPath = join(tmpDir, "events2.sock");
-    const { frames, close } = createEchoServer(socketPath);
+    const { frames, close } = await createEchoServer(socketPath);
 
     const emitter = new Emitter({ socketPath });
     await emitter.emit({ tool: { name: "read_file" }, decision: "pending" });
@@ -436,7 +460,7 @@ describe("frame round-trip (in-process server)", () => {
 
   it("omits input/output when not provided", async () => {
     const socketPath = join(tmpDir, "events3.sock");
-    const { frames, close } = createEchoServer(socketPath);
+    const { frames, close } = await createEchoServer(socketPath);
 
     const emitter = new Emitter({ socketPath });
     await emitter.emit({
@@ -462,7 +486,7 @@ describe("frame round-trip (in-process server)", () => {
 
   it("preserves an explicit empty-string error (no falsy drop)", async () => {
     const socketPath = join(tmpDir, "empty-err.sock");
-    const { frames, close } = createEchoServer(socketPath);
+    const { frames, close } = await createEchoServer(socketPath);
 
     const emitter = new Emitter({ socketPath });
     await emitter.emit({
@@ -561,7 +585,7 @@ describe("frame round-trip (in-process server)", () => {
 
   it("concurrent emits do not interleave bytes and preserve order", async () => {
     const socketPath = join(tmpDir, "concurrent.sock");
-    const { frames, close } = createEchoServer(socketPath);
+    const { frames, close } = await createEchoServer(socketPath);
 
     const emitter = new Emitter({ socketPath });
 

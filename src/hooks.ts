@@ -171,11 +171,18 @@ export function beforeToolCall(
   if (deps.emitter) {
     try {
       const inputJson = JSON.stringify(event.params);
-      void deps.emitter.emit({
-        tool: { name: event.toolName },
-        ...(inputJson !== undefined ? { input: inputJson } : {}),
-        decision: "pending",
-      });
+      // .catch swallows async rejections so a future EmitterLike that
+      // rejects can never surface as an unhandled rejection on the host.
+      // The real Emitter never rejects (transport failures resolve to
+      // null, caller bugs resolve to Error), but we cannot rely on that
+      // for arbitrary implementations of the structural interface.
+      deps.emitter
+        .emit({
+          tool: { name: event.toolName },
+          ...(inputJson !== undefined ? { input: inputJson } : {}),
+          decision: "pending",
+        })
+        .catch(() => {});
     } catch (err) {
       deps.logger.warn(
         `agent-receipts: emitter pre-call forward skipped: ${String(err)}`,
@@ -304,13 +311,17 @@ export async function afterToolCall(
       const inputJson = JSON.stringify(stashed?.params ?? event.params);
       const resultJson =
         event.result !== undefined ? JSON.stringify(event.result) : undefined;
-      void deps.emitter.emit({
-        tool: { name: event.toolName },
-        ...(inputJson !== undefined ? { input: inputJson } : {}),
-        ...(resultJson !== undefined ? { output: resultJson } : {}),
-        ...(event.error !== undefined ? { error: event.error } : {}),
-        decision: "allowed",
-      });
+      // .catch swallows async rejections — see the matching comment in
+      // beforeToolCall above.
+      deps.emitter
+        .emit({
+          tool: { name: event.toolName },
+          ...(inputJson !== undefined ? { input: inputJson } : {}),
+          ...(resultJson !== undefined ? { output: resultJson } : {}),
+          ...(event.error !== undefined ? { error: event.error } : {}),
+          decision: "allowed",
+        })
+        .catch(() => {});
     } catch (err) {
       deps.logger.warn(
         `agent-receipts: emitter post-call forward skipped: ${String(err)}`,

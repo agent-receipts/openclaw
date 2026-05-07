@@ -15,9 +15,13 @@ import type { EmitEvent } from "./emitter.js";
 
 /**
  * Test double for the daemon emitter. Records every call and lets tests
- * inject failures (throwing or returning an Error) without spinning up an
- * actual AF_UNIX server. Structurally satisfies EmitterLike, which is the
- * surface the hook path consumes.
+ * inject failures (returning an Error or throwing) without spinning up an
+ * actual AF_UNIX server. Structurally satisfies EmitterLike.
+ *
+ * Mirrors the real Emitter contract: emit() never rejects. A synchronous
+ * throw from emitImpl is caught and surfaced as a returned Error so the
+ * hook path's `.catch` is purely defensive and tests can't accidentally
+ * leak unhandled rejections.
  */
 export class FakeEmitter implements EmitterLike {
   readonly events: EmitEvent[] = [];
@@ -26,7 +30,11 @@ export class FakeEmitter implements EmitterLike {
 
   async emit(ev: EmitEvent): Promise<Error | null> {
     this.events.push(ev);
-    return await this.emitImpl(ev);
+    try {
+      return await this.emitImpl(ev);
+    } catch (err) {
+      return err instanceof Error ? err : new Error(String(err));
+    }
   }
 }
 

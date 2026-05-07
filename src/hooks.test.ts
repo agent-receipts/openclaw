@@ -423,6 +423,34 @@ describe("hooks", () => {
       expect(store.stats().total).toBe(1);
       expect(emitter.events).toHaveLength(2);
     });
+
+    it("does not produce an unhandled rejection if a custom emitter rejects", async () => {
+      // Wire an EmitterLike that *rejects* its promise (something the real
+      // Emitter never does). The hook must attach a .catch so the host
+      // process never sees an unhandled rejection.
+      const rejecting = {
+        emit: (): Promise<Error | null> =>
+          Promise.reject(new Error("custom emitter rejected")),
+      };
+      const depsWithEmitter = makeHookDeps(store, { emitter: rejecting });
+
+      const unhandled: unknown[] = [];
+      const onUnhandled = (reason: unknown): void => {
+        unhandled.push(reason);
+      };
+      process.on("unhandledRejection", onUnhandled);
+      try {
+        await simulateToolCall(depsWithEmitter, "read_file", { path: "/a.txt" });
+        // Give the microtask queue a turn so any rejection has a chance
+        // to surface to the unhandledRejection handler.
+        await new Promise((resolve) => setImmediate(resolve));
+      } finally {
+        process.off("unhandledRejection", onUnhandled);
+      }
+
+      expect(unhandled).toHaveLength(0);
+      expect(store.stats().total).toBe(1);
+    });
   });
 });
 
