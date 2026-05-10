@@ -143,7 +143,7 @@ function parse(v) {
       }
     }
   }
-  return { major: +m[1], minor: +m[2], patch: +m[3], pre: m[4] ?? null };
+  return { major: BigInt(m[1]), minor: BigInt(m[2]), patch: BigInt(m[3]), pre: m[4] ?? null };
 }
 // Compare two dot-separated pre-release identifiers per SemVer §11.4
 function comparePre(a, b) {
@@ -162,9 +162,9 @@ function comparePre(a, b) {
 }
 function cmp(a, b) {
   const pa = parse(a), pb = parse(b);
-  if (pa.major !== pb.major) return pa.major - pb.major;
-  if (pa.minor !== pb.minor) return pa.minor - pb.minor;
-  if (pa.patch !== pb.patch) return pa.patch - pb.patch;
+  if (pa.major !== pb.major) return pa.major > pb.major ? 1 : -1;
+  if (pa.minor !== pb.minor) return pa.minor > pb.minor ? 1 : -1;
+  if (pa.patch !== pb.patch) return pa.patch > pb.patch ? 1 : -1;
   if (pa.pre === null && pb.pre === null) return 0;
   if (pa.pre === null) return 1;   // release > pre-release of same X.Y.Z
   if (pb.pre === null) return -1;  // pre-release < release of same X.Y.Z
