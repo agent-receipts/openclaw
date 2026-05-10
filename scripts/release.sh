@@ -58,8 +58,9 @@ validate_semver() {
     || die "${ctx} '${v}' is not a valid SemVer version (X.Y.Z or X.Y.Z-prerelease)"
   if [[ "$v" == *-* ]]; then
     local pre="${v#*-}" id
-    IFS='.' read -ra _ids <<< "$pre"
-    for id in "${_ids[@]}"; do
+    local -a ids
+    IFS='.' read -ra ids <<< "$pre"
+    for id in "${ids[@]}"; do
       [[ "$id" =~ ^0[0-9]+$ ]] \
         && die "invalid pre-release identifier '${id}' in '${ctx}' '${v}' — numeric identifiers must not have leading zeros"
     done
