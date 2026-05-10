@@ -49,6 +49,23 @@ done
 
 die() { echo "error: $*" >&2; exit 1; }
 
+# Validate a version string: must match SEMVER_RE and must not contain purely
+# numeric pre-release identifiers with leading zeros (SemVer §9).
+# Usage: validate_semver <version> <context>
+validate_semver() {
+  local v="$1" ctx="$2"
+  [[ "$v" =~ $SEMVER_RE ]] \
+    || die "${ctx} '${v}' is not a valid SemVer version (X.Y.Z or X.Y.Z-prerelease)"
+  if [[ "$v" == *-* ]]; then
+    local pre="${v#*-}" id
+    IFS='.' read -ra _ids <<< "$pre"
+    for id in "${_ids[@]}"; do
+      [[ "$id" =~ ^0[0-9]+$ ]] \
+        && die "invalid pre-release identifier '${id}' in '${ctx}' '${v}' — numeric identifiers must not have leading zeros"
+    done
+  fi
+}
+
 # run <cmd> [args...] — execute normally, or just print in dry-run mode
 run() {
   if [[ "$DRY_RUN" == true ]]; then
@@ -85,8 +102,7 @@ fi
 CURRENT_VERSION=$(node -p "require('./package.json').version")
 
 SEMVER_RE='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z][0-9A-Za-z-]*(\.[0-9A-Za-z][0-9A-Za-z-]*)*)?$'
-[[ "$CURRENT_VERSION" =~ $SEMVER_RE ]] \
-  || die "package.json version '${CURRENT_VERSION}' is not a valid SemVer version (X.Y.Z or X.Y.Z-prerelease)"
+validate_semver "$CURRENT_VERSION" "package.json version"
 
 # Extract the stable X.Y.Z base and detect whether we're currently on a pre-release
 CURRENT_BASE="${CURRENT_VERSION%%-*}"
@@ -106,8 +122,7 @@ case "$BUMP" in
     esac
     ;;
   *)
-    [[ "$BUMP" =~ $SEMVER_RE ]] \
-      || die "invalid argument '${BUMP}' — must be patch/minor/major or X.Y.Z[-prerelease]"
+    validate_semver "$BUMP" "version argument"
     NEW_VERSION="$BUMP"
     ;;
 esac
