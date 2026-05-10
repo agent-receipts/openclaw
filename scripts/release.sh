@@ -3,7 +3,7 @@
 # scripts/release.sh — Automate the openclaw release flow
 #
 # Usage:
-#   scripts/release.sh [--dry-run] <patch|minor|major|X.Y.Z>
+#   scripts/release.sh [--dry-run] <patch|minor|major|X.Y.Z[-prerelease]>
 #
 # Steps:
 #   1. Validate preconditions (clean tree, on main, required tools present)
@@ -19,11 +19,11 @@ cd "$(dirname "$0")/.." || { echo "error: cannot change to repo root" >&2; exit 
 # ── Usage ─────────────────────────────────────────────────────────────────────
 
 usage() {
-  echo "Usage: $(basename "$0") [--dry-run] <patch|minor|major|X.Y.Z>" >&2
+  echo "Usage: $(basename "$0") [--dry-run] <patch|minor|major|X.Y.Z[-prerelease]>" >&2
   echo >&2
-  echo "  patch|minor|major  Bump the current version by that increment" >&2
-  echo "  X.Y.Z              Use this exact version" >&2
-  echo "  --dry-run          Print every step; make no changes" >&2
+  echo "  patch|minor|major        Bump the current version by that increment (stable only)" >&2
+  echo "  X.Y.Z[-prerelease]       Use this exact version" >&2
+  echo "  --dry-run                Print every step; make no changes" >&2
   exit 1
 }
 
@@ -84,38 +84,81 @@ fi
 
 CURRENT_VERSION=$(node -p "require('./package.json').version")
 
-[[ "$CURRENT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
-  || die "package.json version '${CURRENT_VERSION}' is not a clean X.Y.Z — prerelease versions are not supported"
+SEMVER_RE='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z-]*(\.[0-9A-Za-z][0-9A-Za-z-]*)*)?$'
+[[ "$CURRENT_VERSION" =~ $SEMVER_RE ]] \
+  || die "package.json version '${CURRENT_VERSION}' is not a valid SemVer version (X.Y.Z or X.Y.Z-prerelease)"
 
-IFS='.' read -r VER_MAJOR VER_MINOR VER_PATCH <<< "$CURRENT_VERSION"
+# Extract the stable X.Y.Z base and detect whether we're currently on a pre-release
+CURRENT_BASE="${CURRENT_VERSION%%-*}"
+IS_PRERELEASE=false
+[[ "$CURRENT_VERSION" != "$CURRENT_BASE" ]] && IS_PRERELEASE=true
+
+IFS='.' read -r VER_MAJOR VER_MINOR VER_PATCH <<< "$CURRENT_BASE"
 
 case "$BUMP" in
-  patch)
-    NEW_VERSION="${VER_MAJOR}.${VER_MINOR}.$((VER_PATCH + 1))"
-    ;;
-  minor)
-    NEW_VERSION="${VER_MAJOR}.$((VER_MINOR + 1)).0"
-    ;;
-  major)
-    NEW_VERSION="$((VER_MAJOR + 1)).0.0"
+  patch|minor|major)
+    [[ "$IS_PRERELEASE" == true ]] \
+      && die "'${BUMP}' bump is not defined for pre-release version '${CURRENT_VERSION}' — specify an explicit version (e.g. '${CURRENT_BASE}' to promote to stable, or '${CURRENT_BASE}-alpha.2' for the next pre-release)"
+    case "$BUMP" in
+      patch) NEW_VERSION="${VER_MAJOR}.${VER_MINOR}.$((VER_PATCH + 1))" ;;
+      minor) NEW_VERSION="${VER_MAJOR}.$((VER_MINOR + 1)).0" ;;
+      major) NEW_VERSION="$((VER_MAJOR + 1)).0.0" ;;
+    esac
     ;;
   *)
-    [[ "$BUMP" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
-      || die "invalid argument '${BUMP}' — must be patch/minor/major or X.Y.Z"
+    [[ "$BUMP" =~ $SEMVER_RE ]] \
+      || die "invalid argument '${BUMP}' — must be patch/minor/major or X.Y.Z[-prerelease]"
     NEW_VERSION="$BUMP"
     ;;
 esac
 
-# Guard: new version must be strictly greater than current
-IFS='.' read -r NEW_MAJOR NEW_MINOR NEW_PATCH <<< "$NEW_VERSION"
-if (( NEW_MAJOR < VER_MAJOR ||
-      ( NEW_MAJOR == VER_MAJOR && NEW_MINOR < VER_MINOR ) ||
-      ( NEW_MAJOR == VER_MAJOR && NEW_MINOR == VER_MINOR && NEW_PATCH <= VER_PATCH ) )); then
-  die "version '${NEW_VERSION}' must be strictly greater than current '${CURRENT_VERSION}'"
-fi
+# Guard: new version must be strictly greater than current (SemVer-aware).
+# Bash arithmetic can't handle pre-release suffixes; use Node for the comparison.
+export NEW_VERSION CURRENT_VERSION
+node << 'JSEOF'
+function parse(v) {
+  const m = v.match(/^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/);
+  if (!m) { process.stderr.write('error: invalid version: ' + v + '\n'); process.exit(2); }
+  return { major: +m[1], minor: +m[2], patch: +m[3], pre: m[4] ?? null };
+}
+// Compare two dot-separated pre-release identifiers per SemVer §11.4
+function comparePre(a, b) {
+  const ap = a.split('.'), bp = b.split('.');
+  const len = Math.max(ap.length, bp.length);
+  for (let i = 0; i < len; i++) {
+    if (i >= ap.length) return -1; // fewer identifiers = lower precedence
+    if (i >= bp.length) return 1;
+    const ai = ap[i], bi = bp[i];
+    const an = /^\d+$/.test(ai), bn = /^\d+$/.test(bi);
+    if (an && bn) { const d = +ai - +bi; if (d !== 0) return d; }
+    else if (an !== bn) { return an ? -1 : 1; } // numeric < alphanumeric
+    else { if (ai < bi) return -1; if (ai > bi) return 1; }
+  }
+  return 0;
+}
+function cmp(a, b) {
+  const pa = parse(a), pb = parse(b);
+  if (pa.major !== pb.major) return pa.major - pb.major;
+  if (pa.minor !== pb.minor) return pa.minor - pb.minor;
+  if (pa.patch !== pb.patch) return pa.patch - pb.patch;
+  if (pa.pre === null && pb.pre === null) return 0;
+  if (pa.pre === null) return 1;   // release > pre-release of same X.Y.Z
+  if (pb.pre === null) return -1;  // pre-release < release of same X.Y.Z
+  return comparePre(pa.pre, pb.pre);
+}
+const nv = process.env.NEW_VERSION, cv = process.env.CURRENT_VERSION;
+if (cmp(nv, cv) <= 0) {
+  process.stderr.write("error: version '" + nv + "' must be strictly greater than current '" + cv + "'\n");
+  process.exit(1);
+}
+JSEOF
 
 TAG="v${NEW_VERSION}"
 RELEASE_DATE=$(date -u +%Y-%m-%d)
+
+# Detect whether the new version is a pre-release
+IS_NEW_PRERELEASE=false
+[[ "${NEW_VERSION}" == *-* ]] && IS_NEW_PRERELEASE=true
 
 echo "current: ${CURRENT_VERSION}"
 echo "    new: ${NEW_VERSION}  (${TAG})"
@@ -147,8 +190,10 @@ if (out === src) {
   process.exit(1);
 }
 
-// Update Keep-a-Changelog reference links at the bottom
-const linkMatch = out.match(/^\[Unreleased\]:\s*(\S+?)\/compare\/v(\d+\.\d+\.\d+)\.\.\.HEAD\s*$/m);
+// Update Keep-a-Changelog reference links at the bottom.
+// The previous version may itself be a pre-release (e.g. v0.8.0-alpha.1),
+// so match any non-whitespace chars after /compare/v rather than only X.Y.Z.
+const linkMatch = out.match(/^\[Unreleased\]:\s*(\S+?)\/compare\/v(\S+?)\.\.\.HEAD\s*$/m);
 if (linkMatch) {
   const [fullMatch, repoUrl, prevVersion] = linkMatch;
   out = out.replace(
@@ -175,10 +220,17 @@ run git push origin main "$TAG"
 # ── Create GitHub Release ─────────────────────────────────────────────────────
 
 # If this step fails, the tag is already pushed. Retry with:
-#   gh release create "$TAG" --title "$TAG" --generate-notes
-run gh release create "$TAG" \
-  --title "$TAG" \
-  --generate-notes
+#   gh release create "$TAG" --title "$TAG" --generate-notes [--prerelease]
+if [[ "$IS_NEW_PRERELEASE" == true ]]; then
+  run gh release create "$TAG" \
+    --title "$TAG" \
+    --generate-notes \
+    --prerelease
+else
+  run gh release create "$TAG" \
+    --title "$TAG" \
+    --generate-notes
+fi
 
 echo
 echo "Done. ${TAG} is live — publish.yml will handle npm publishing."
