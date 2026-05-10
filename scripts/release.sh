@@ -84,7 +84,7 @@ fi
 
 CURRENT_VERSION=$(node -p "require('./package.json').version")
 
-SEMVER_RE='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z-]*(\.[0-9A-Za-z][0-9A-Za-z-]*)*)?$'
+SEMVER_RE='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z][0-9A-Za-z-]*(\.[0-9A-Za-z][0-9A-Za-z-]*)*)?$'
 [[ "$CURRENT_VERSION" =~ $SEMVER_RE ]] \
   || die "package.json version '${CURRENT_VERSION}' is not a valid SemVer version (X.Y.Z or X.Y.Z-prerelease)"
 
@@ -130,7 +130,7 @@ function comparePre(a, b) {
     if (i >= bp.length) return 1;
     const ai = ap[i], bi = bp[i];
     const an = /^\d+$/.test(ai), bn = /^\d+$/.test(bi);
-    if (an && bn) { const d = +ai - +bi; if (d !== 0) return d; }
+    if (an && bn) { if (ai !== bi) return BigInt(ai) > BigInt(bi) ? 1 : -1; }
     else if (an !== bn) { return an ? -1 : 1; } // numeric < alphanumeric
     else { if (ai < bi) return -1; if (ai > bi) return 1; }
   }
