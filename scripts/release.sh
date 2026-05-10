@@ -119,6 +119,15 @@ node << 'JSEOF'
 function parse(v) {
   const m = v.match(/^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/);
   if (!m) { process.stderr.write('error: invalid version: ' + v + '\n'); process.exit(2); }
+  // Purely numeric pre-release identifiers must not have leading zeros (SemVer §9)
+  if (m[4]) {
+    for (const id of m[4].split('.')) {
+      if (/^\d+$/.test(id) && id.length > 1 && id[0] === '0') {
+        process.stderr.write("error: invalid pre-release identifier '" + id + "' in '" + v + "' — numeric identifiers must not have leading zeros\n");
+        process.exit(1);
+      }
+    }
+  }
   return { major: +m[1], minor: +m[2], patch: +m[3], pre: m[4] ?? null };
 }
 // Compare two dot-separated pre-release identifiers per SemVer §11.4
