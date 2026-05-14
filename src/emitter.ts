@@ -112,33 +112,58 @@ interface WireFrame {
 }
 
 /**
+ * Pure socket path resolver, extracted for deterministic testing without
+ * platform mocks. Call defaultSocketPath() for normal use.
+ *
+ * Resolution order:
+ * 1. AGENTRECEIPTS_SOCKET environment variable (any platform).
+ * 2. macOS: $TMPDIR/agentreceipts/events.sock (TMPDIR defaults to /tmp).
+ * 3. Linux with $XDG_RUNTIME_DIR set: $XDG_RUNTIME_DIR/agentreceipts/events.sock.
+ * 4. Linux with process uid: /run/user/<uid>/agentreceipts/events.sock.
+ * 5. Linux system fallback: /run/agentreceipts/events.sock.
+ * 6. Other platforms: empty string — pass socketPath explicitly.
+ *
+ * @internal
+ */
+export function _resolveSocketPath(
+  env: Readonly<Record<string, string | undefined>>,
+  os: string,
+  uid: number | undefined,
+): string {
+  const envPath = env["AGENTRECEIPTS_SOCKET"];
+  if (envPath) {
+    return envPath;
+  }
+  if (os === "darwin") {
+    const tmpdir = env["TMPDIR"] ?? "/tmp";
+    return join(tmpdir, "agentreceipts", "events.sock");
+  }
+  if (os === "linux") {
+    const xdgRuntime = env["XDG_RUNTIME_DIR"];
+    if (xdgRuntime) {
+      return join(xdgRuntime, "agentreceipts", "events.sock");
+    }
+    if (uid !== undefined) {
+      return `/run/user/${uid}/agentreceipts/events.sock`;
+    }
+    return "/run/agentreceipts/events.sock";
+  }
+  return "";
+}
+
+/**
  * Returns the per-OS default path for the daemon socket.
  *
  * Resolution order:
  * 1. AGENTRECEIPTS_SOCKET environment variable (any platform).
  * 2. macOS: $TMPDIR/agentreceipts/events.sock (TMPDIR defaults to /tmp).
  * 3. Linux with $XDG_RUNTIME_DIR set: $XDG_RUNTIME_DIR/agentreceipts/events.sock.
- * 4. Linux fallback: /run/agentreceipts/events.sock.
- * 5. Other platforms: empty string — pass socketPath explicitly.
+ * 4. Linux with process uid: /run/user/<uid>/agentreceipts/events.sock.
+ * 5. Linux system fallback: /run/agentreceipts/events.sock.
+ * 6. Other platforms: empty string — pass socketPath explicitly.
  */
 export function defaultSocketPath(): string {
-  const envPath = process.env.AGENTRECEIPTS_SOCKET;
-  if (envPath) {
-    return envPath;
-  }
-  const os = platform();
-  if (os === "darwin") {
-    const tmpdir = process.env.TMPDIR ?? "/tmp";
-    return join(tmpdir, "agentreceipts", "events.sock");
-  }
-  if (os === "linux") {
-    const xdgRuntime = process.env.XDG_RUNTIME_DIR;
-    if (xdgRuntime) {
-      return join(xdgRuntime, "agentreceipts", "events.sock");
-    }
-    return "/run/agentreceipts/events.sock";
-  }
-  return "";
+  return _resolveSocketPath(process.env, platform(), process.getuid?.());
 }
 
 /**

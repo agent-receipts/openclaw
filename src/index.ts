@@ -7,7 +7,7 @@
  */
 
 import { dirname } from "node:path";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, statSync } from "node:fs";
 import { definePluginEntry } from "./openclaw-types.js";
 import { openStore } from "@agnt-rcpt/sdk-ts";
 
@@ -97,6 +97,16 @@ export default definePluginEntry({
           api.logger.info(
             `agent-receipts: daemon emitter ready (socket=${socketPath}, session_id=${emitter.sessionId})`,
           );
+          try {
+            statSync(socketPath);
+          } catch {
+            api.logger.warn(
+              `agent-receipts: daemon forwarding enabled but socket unreachable at ${socketPath}`,
+            );
+            api.logger.warn(
+              "→ Install and start the daemon: https://github.com/agent-receipts/ar/tree/main/daemon",
+            );
+          }
         } catch (err) {
           api.logger.warn(`agent-receipts: daemon emitter unavailable: ${String(err)}`);
         }
