@@ -95,16 +95,13 @@ export default definePluginEntry({
           // one actually used).
           emitter = new Emitter({ socketPath });
 
-          // Probe the socket file before declaring readiness. The emitter
-          // dials lazily so construction always succeeds — a missing socket
-          // would only surface as a silent drop on the first emit(). A
-          // synchronous stat here catches the "daemon not installed" case
-          // at startup and gives the operator an actionable warning.
+          // The emitter dials lazily, so a missing socket only surfaces as a
+          // silent per-emit drop. A startup stat gives the operator an early warning.
           try {
             statSync(socketPath);
           } catch (err) {
-            const code = (err as NodeJS.ErrnoException).code;
-            if (code === "ENOENT") {
+            const e = err as NodeJS.ErrnoException;
+            if (e.code === "ENOENT") {
               api.logger.warn(
                 `agent-receipts: daemon forwarding enabled but no socket file at ${socketPath}`,
               );
@@ -113,7 +110,7 @@ export default definePluginEntry({
               );
             } else {
               api.logger.warn(
-                `agent-receipts: daemon forwarding enabled but socket probe failed at ${socketPath}: ${String(err)}`,
+                `agent-receipts: daemon forwarding enabled but socket probe failed at ${socketPath}: ${e.message} (${e.code ?? "unknown"})`,
               );
             }
           }

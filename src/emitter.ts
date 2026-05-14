@@ -128,7 +128,7 @@ interface WireFrame {
  */
 export function _resolveSocketPath(
   env: Readonly<Record<string, string | undefined>>,
-  platformName: string,
+  platformName: NodeJS.Platform,
   uid: number | undefined,
 ): string {
   const envPath = env["AGENTRECEIPTS_SOCKET"];
