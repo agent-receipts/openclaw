@@ -6,8 +6,9 @@
  * audit trail using the Agent Receipts TypeScript SDK.
  */
 
+import { createConnection } from "node:net";
 import { dirname } from "node:path";
-import { mkdirSync, statSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { definePluginEntry } from "./openclaw-types.js";
 import { openStore } from "@agnt-rcpt/sdk-ts";
 
@@ -20,7 +21,7 @@ import {
   type HookDeps,
   type PendingMap,
 } from "./hooks.js";
-import { Emitter, defaultSocketPath } from "./emitter.js";
+import { Emitter, defaultSocketPath, DIAL_TIMEOUT_MS } from "./emitter.js";
 import { resetChain, getChainId, type ChainsMap, type ChainState } from "./chain.js";
 import { createQueryReceiptsToolFactory, createVerifyChainToolFactory } from "./tools.js";
 
@@ -95,36 +96,44 @@ export default definePluginEntry({
           // one actually used).
           emitter = new Emitter({ socketPath });
 
-          // The emitter dials lazily, so a missing or non-socket path only
-          // surfaces as a silent per-emit drop. A startup stat gives the
-          // operator an early warning.
-          try {
-            const stats = statSync(socketPath);
-            if (!stats.isSocket()) {
+          // The emitter dials lazily, so an unreachable socket (missing file,
+          // stale socket, daemon not listening) only surfaces as a silent
+          // per-emit drop. Probe once at startup so operators get an early
+          // actionable warning instead.
+          void new Promise<void>((resolve) => {
+            let settled = false;
+            const settle = (): void => {
+              if (settled) return;
+              settled = true;
+              resolve();
+            };
+            const probe = createConnection({ path: socketPath });
+            const timer = setTimeout(() => {
+              probe.destroy();
               api.logger.warn(
-                `agent-receipts: daemon forwarding enabled but path is not a Unix socket: ${socketPath}`,
-              );
-            }
-          } catch (err) {
-            // Narrow structurally; avoid asserting the full ErrnoException shape.
-            const code =
-              err !== null && typeof err === "object" && "code" in err
-                ? (err as { code?: string }).code
-                : undefined;
-            const message = err instanceof Error ? err.message : String(err);
-            if (code === "ENOENT") {
-              api.logger.warn(
-                `agent-receipts: daemon forwarding enabled but no socket file at ${socketPath}`,
+                `agent-receipts: daemon forwarding enabled but socket unreachable at ${socketPath} (connection timed out)`,
               );
               api.logger.warn(
                 "=> Install and start the daemon: https://github.com/agent-receipts/ar/tree/main/daemon",
               );
-            } else {
+              settle();
+            }, DIAL_TIMEOUT_MS);
+            probe.once("connect", () => {
+              clearTimeout(timer);
+              probe.destroy();
+              settle();
+            });
+            probe.once("error", (err) => {
+              clearTimeout(timer);
               api.logger.warn(
-                `agent-receipts: daemon forwarding enabled but socket probe failed at ${socketPath}: ${message} (${code ?? "unknown"})`,
+                `agent-receipts: daemon forwarding enabled but socket unreachable at ${socketPath}: ${err.message}`,
               );
-            }
-          }
+              api.logger.warn(
+                "=> Install and start the daemon: https://github.com/agent-receipts/ar/tree/main/daemon",
+              );
+              settle();
+            });
+          });
 
           api.logger.info(
             `agent-receipts: daemon emitter ready (socket=${socketPath}, session_id=${emitter.sessionId})`,
