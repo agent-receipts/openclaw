@@ -14,7 +14,7 @@ import { mkdtempSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { createServer, type Server } from "node:net";
 import { execFileSync, spawn, type ChildProcess } from "node:child_process";
-import { DIAL_TIMEOUT_MS, Emitter, defaultSocketPath, MAX_FRAME_SIZE } from "./emitter.js";
+import { DIAL_TIMEOUT_MS, Emitter, defaultSocketPath, _resolveSocketPath, MAX_FRAME_SIZE } from "./emitter.js";
 
 // macOS AF_UNIX sun_path is capped at 104 bytes. Node's os.tmpdir() on
 // macOS returns "/var/folders/.../T/" which can push our test socket paths
@@ -165,6 +165,75 @@ describe("defaultSocketPath", () => {
       expect(p.length).toBeGreaterThan(0);
       expect(p).toContain("agentreceipts");
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// _resolveSocketPath — pure path resolver (platform-independent tests)
+// ---------------------------------------------------------------------------
+
+describe("_resolveSocketPath", () => {
+  it("AGENTRECEIPTS_SOCKET takes precedence over everything", () => {
+    const path = _resolveSocketPath(
+      { AGENTRECEIPTS_SOCKET: "/custom/events.sock" },
+      "linux",
+      1000,
+    );
+    expect(path).toBe("/custom/events.sock");
+  });
+
+  it("AGENTRECEIPTS_SOCKET takes precedence on darwin too", () => {
+    const path = _resolveSocketPath(
+      { AGENTRECEIPTS_SOCKET: "/custom/events.sock", TMPDIR: "/var/folders/abc" },
+      "darwin",
+      undefined,
+    );
+    expect(path).toBe("/custom/events.sock");
+  });
+
+  it("linux: XDG_RUNTIME_DIR is used when set", () => {
+    const path = _resolveSocketPath(
+      { XDG_RUNTIME_DIR: "/run/user/1234" },
+      "linux",
+      1234,
+    );
+    expect(path).toBe("/run/user/1234/agentreceipts/events.sock");
+  });
+
+  it("linux: uid-based path is used when XDG_RUNTIME_DIR is absent", () => {
+    const path = _resolveSocketPath({}, "linux", 1000);
+    expect(path).toBe("/run/user/1000/agentreceipts/events.sock");
+  });
+
+  it("linux: system fallback when XDG_RUNTIME_DIR absent and uid unavailable", () => {
+    const path = _resolveSocketPath({}, "linux", undefined);
+    expect(path).toBe("/run/agentreceipts/events.sock");
+  });
+
+  it("linux: system fallback when running as root (uid === 0)", () => {
+    // systemd does not create /run/user/0; root uses the system-level socket.
+    const path = _resolveSocketPath({}, "linux", 0);
+    expect(path).toBe("/run/agentreceipts/events.sock");
+  });
+
+  it("linux: empty XDG_RUNTIME_DIR is treated as unset (falls through to uid path)", () => {
+    const path = _resolveSocketPath({ XDG_RUNTIME_DIR: "" }, "linux", 1000);
+    expect(path).toBe("/run/user/1000/agentreceipts/events.sock");
+  });
+
+  it("darwin: uses TMPDIR env var", () => {
+    const path = _resolveSocketPath({ TMPDIR: "/private/tmp/com.apple.123" }, "darwin", undefined);
+    expect(path).toBe("/private/tmp/com.apple.123/agentreceipts/events.sock");
+  });
+
+  it("darwin: falls back to /tmp when TMPDIR is unset", () => {
+    const path = _resolveSocketPath({}, "darwin", undefined);
+    expect(path).toBe("/tmp/agentreceipts/events.sock");
+  });
+
+  it("unknown platform: returns empty string", () => {
+    const path = _resolveSocketPath({}, "win32", undefined);
+    expect(path).toBe("");
   });
 });
 

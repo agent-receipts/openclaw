@@ -259,6 +259,31 @@ describe("integration: full plugin lifecycle", () => {
     expect(logs.some((l) => l.includes("plugin disabled"))).toBe(true);
   });
 
+  it("daemonForwarding: logs warning when socket is unreachable", async () => {
+    // Use AGENTRECEIPTS_SOCKET to pin the socket path to a guaranteed-absent location.
+    const missingSocket = join(tmpdir(), `ar-absent-${randomUUID()}.sock`);
+    const saved = process.env.AGENTRECEIPTS_SOCKET;
+    process.env.AGENTRECEIPTS_SOCKET = missingSocket;
+    try {
+      const { logs } = setupPlugin({ daemonForwarding: true });
+
+      // The connection probe is fire-and-forget; wait for it to settle.
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      const warnLogs = logs.filter((l) => l.startsWith("WARN:"));
+      expect(warnLogs.some((l) => l.includes("socket unreachable") && l.includes(missingSocket))).toBe(true);
+      expect(warnLogs.some((l) => l.includes("Install and start the daemon"))).toBe(true);
+      // The emitter is still constructed (fire-and-forget) so "ready" is also logged.
+      expect(logs.some((l) => l.includes("daemon emitter ready"))).toBe(true);
+    } finally {
+      if (saved === undefined) {
+        delete process.env.AGENTRECEIPTS_SOCKET;
+      } else {
+        process.env.AGENTRECEIPTS_SOCKET = saved;
+      }
+    }
+  });
+
   it("tool call failure records failure outcome", async () => {
     const { hooks, tools } = setupPlugin();
 
