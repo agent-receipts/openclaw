@@ -7,7 +7,7 @@
  */
 
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdirSync, rmSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
@@ -273,6 +273,27 @@ describe("integration: full plugin lifecycle", () => {
       // The emitter is still constructed (fire-and-forget) so "ready" is also logged.
       expect(logs.some((l) => l.includes("daemon emitter ready"))).toBe(true);
     } finally {
+      if (saved === undefined) {
+        delete process.env.AGENTRECEIPTS_SOCKET;
+      } else {
+        process.env.AGENTRECEIPTS_SOCKET = saved;
+      }
+    }
+  });
+
+  it("daemonForwarding: logs warning when path exists but is not a Unix socket", () => {
+    // Create a regular file at the socket path to trigger the isSocket() check.
+    const notASocket = join(tmpdir(), `ar-notasock-${randomUUID()}`);
+    writeFileSync(notASocket, "");
+    const saved = process.env.AGENTRECEIPTS_SOCKET;
+    process.env.AGENTRECEIPTS_SOCKET = notASocket;
+    try {
+      const { logs } = setupPlugin({ daemonForwarding: true });
+
+      const warnLogs = logs.filter((l) => l.startsWith("WARN:"));
+      expect(warnLogs.some((l) => l.includes("not a Unix socket") && l.includes(notASocket))).toBe(true);
+    } finally {
+      rmSync(notASocket, { force: true });
       if (saved === undefined) {
         delete process.env.AGENTRECEIPTS_SOCKET;
       } else {

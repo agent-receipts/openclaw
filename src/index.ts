@@ -95,13 +95,24 @@ export default definePluginEntry({
           // one actually used).
           emitter = new Emitter({ socketPath });
 
-          // The emitter dials lazily, so a missing socket only surfaces as a
-          // silent per-emit drop. A startup stat gives the operator an early warning.
+          // The emitter dials lazily, so a missing or non-socket path only
+          // surfaces as a silent per-emit drop. A startup stat gives the
+          // operator an early warning.
           try {
-            statSync(socketPath);
+            const stats = statSync(socketPath);
+            if (!stats.isSocket()) {
+              api.logger.warn(
+                `agent-receipts: daemon forwarding enabled but path is not a Unix socket: ${socketPath}`,
+              );
+            }
           } catch (err) {
-            const e = err as NodeJS.ErrnoException;
-            if (e.code === "ENOENT") {
+            // Narrow structurally; avoid asserting the full ErrnoException shape.
+            const code =
+              err !== null && typeof err === "object" && "code" in err
+                ? (err as { code?: string }).code
+                : undefined;
+            const message = err instanceof Error ? err.message : String(err);
+            if (code === "ENOENT") {
               api.logger.warn(
                 `agent-receipts: daemon forwarding enabled but no socket file at ${socketPath}`,
               );
@@ -110,7 +121,7 @@ export default definePluginEntry({
               );
             } else {
               api.logger.warn(
-                `agent-receipts: daemon forwarding enabled but socket probe failed at ${socketPath}: ${e.message} (${e.code ?? "unknown"})`,
+                `agent-receipts: daemon forwarding enabled but socket probe failed at ${socketPath}: ${message} (${code ?? "unknown"})`,
               );
             }
           }
