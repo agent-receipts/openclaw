@@ -94,19 +94,33 @@ export default definePluginEntry({
           // check and the constructor call (the logged path must match the
           // one actually used).
           emitter = new Emitter({ socketPath });
+
+          // Probe the socket file before declaring readiness. The emitter
+          // dials lazily so construction always succeeds — a missing socket
+          // would only surface as a silent drop on the first emit(). A
+          // synchronous stat here catches the "daemon not installed" case
+          // at startup and gives the operator an actionable warning.
+          try {
+            statSync(socketPath);
+          } catch (err) {
+            const code = (err as NodeJS.ErrnoException).code;
+            if (code === "ENOENT") {
+              api.logger.warn(
+                `agent-receipts: daemon forwarding enabled but no socket file at ${socketPath}`,
+              );
+              api.logger.warn(
+                "=> Install and start the daemon: https://github.com/agent-receipts/ar/tree/main/daemon",
+              );
+            } else {
+              api.logger.warn(
+                `agent-receipts: daemon forwarding enabled but socket probe failed at ${socketPath}: ${String(err)}`,
+              );
+            }
+          }
+
           api.logger.info(
             `agent-receipts: daemon emitter ready (socket=${socketPath}, session_id=${emitter.sessionId})`,
           );
-          try {
-            statSync(socketPath);
-          } catch {
-            api.logger.warn(
-              `agent-receipts: daemon forwarding enabled but socket unreachable at ${socketPath}`,
-            );
-            api.logger.warn(
-              "→ Install and start the daemon: https://github.com/agent-receipts/ar/tree/main/daemon",
-            );
-          }
         } catch (err) {
           api.logger.warn(`agent-receipts: daemon emitter unavailable: ${String(err)}`);
         }

@@ -119,32 +119,34 @@ interface WireFrame {
  * 1. AGENTRECEIPTS_SOCKET environment variable (any platform).
  * 2. macOS: $TMPDIR/agentreceipts/events.sock (TMPDIR defaults to /tmp).
  * 3. Linux with $XDG_RUNTIME_DIR set: $XDG_RUNTIME_DIR/agentreceipts/events.sock.
- * 4. Linux with process uid: /run/user/<uid>/agentreceipts/events.sock.
+ * 4. Linux, non-root uid: /run/user/<uid>/agentreceipts/events.sock.
+ *    (systemd does not create /run/user/0 for root; fall through to system path.)
  * 5. Linux system fallback: /run/agentreceipts/events.sock.
  * 6. Other platforms: empty string — pass socketPath explicitly.
  *
- * @internal
+ * @internal Exported for testing; use defaultSocketPath() in production code.
  */
 export function _resolveSocketPath(
   env: Readonly<Record<string, string | undefined>>,
-  os: string,
+  platformName: string,
   uid: number | undefined,
 ): string {
   const envPath = env["AGENTRECEIPTS_SOCKET"];
   if (envPath) {
     return envPath;
   }
-  if (os === "darwin") {
+  if (platformName === "darwin") {
     const tmpdir = env["TMPDIR"] ?? "/tmp";
     return join(tmpdir, "agentreceipts", "events.sock");
   }
-  if (os === "linux") {
+  if (platformName === "linux") {
     const xdgRuntime = env["XDG_RUNTIME_DIR"];
     if (xdgRuntime) {
       return join(xdgRuntime, "agentreceipts", "events.sock");
     }
-    if (uid !== undefined) {
-      return `/run/user/${uid}/agentreceipts/events.sock`;
+    // systemd creates /run/user/<uid> only for non-root users; root falls through.
+    if (uid !== undefined && uid !== 0) {
+      return join("/run/user", String(uid), "agentreceipts", "events.sock");
     }
     return "/run/agentreceipts/events.sock";
   }
@@ -153,14 +155,7 @@ export function _resolveSocketPath(
 
 /**
  * Returns the per-OS default path for the daemon socket.
- *
- * Resolution order:
- * 1. AGENTRECEIPTS_SOCKET environment variable (any platform).
- * 2. macOS: $TMPDIR/agentreceipts/events.sock (TMPDIR defaults to /tmp).
- * 3. Linux with $XDG_RUNTIME_DIR set: $XDG_RUNTIME_DIR/agentreceipts/events.sock.
- * 4. Linux with process uid: /run/user/<uid>/agentreceipts/events.sock.
- * 5. Linux system fallback: /run/agentreceipts/events.sock.
- * 6. Other platforms: empty string — pass socketPath explicitly.
+ * See _resolveSocketPath for the full resolution order.
  */
 export function defaultSocketPath(): string {
   return _resolveSocketPath(process.env, platform(), process.getuid?.());

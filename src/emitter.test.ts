@@ -210,6 +210,17 @@ describe("_resolveSocketPath", () => {
     expect(path).toBe("/run/agentreceipts/events.sock");
   });
 
+  it("linux: system fallback when running as root (uid === 0)", () => {
+    // systemd does not create /run/user/0; root uses the system-level socket.
+    const path = _resolveSocketPath({}, "linux", 0);
+    expect(path).toBe("/run/agentreceipts/events.sock");
+  });
+
+  it("linux: empty XDG_RUNTIME_DIR is treated as unset (falls through to uid path)", () => {
+    const path = _resolveSocketPath({ XDG_RUNTIME_DIR: "" }, "linux", 1000);
+    expect(path).toBe("/run/user/1000/agentreceipts/events.sock");
+  });
+
   it("darwin: uses TMPDIR env var", () => {
     const path = _resolveSocketPath({ TMPDIR: "/private/tmp/com.apple.123" }, "darwin", undefined);
     expect(path).toBe("/private/tmp/com.apple.123/agentreceipts/events.sock");
