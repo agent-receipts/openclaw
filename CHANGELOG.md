@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Startup warning when daemon socket unreachable** ([#133](https://github.com/agent-receipts/openclaw/issues/133)):
-  If `daemonForwarding` is enabled but the resolved socket path is not present
+  If `daemonForwarding` is enabled but the resolved socket path is unreachable
   at startup, the plugin now logs a clear two-line warning with the socket path
   and a link to the daemon setup guide. Previously the mismatch was silent.
 - **Daemon setup documentation** ([#132](https://github.com/agent-receipts/openclaw/issues/132)):
