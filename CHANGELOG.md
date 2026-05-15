@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-05-15
+
+### Fixed
+
+- **Socket path fallback on Linux** ([#133](https://github.com/agent-receipts/openclaw/issues/133)):
+  When `XDG_RUNTIME_DIR` is unset (common when the gateway runs as a system
+  service with `User=`), the daemon emitter now resolves the socket path from
+  `process.getuid()` (`/run/user/<uid>/agentreceipts/events.sock`) before
+  falling back to the system-wide path. Previously it fell back directly to
+  `/run/agentreceipts/events.sock`, silently misdirecting frames.
+
+### Added
+
+- **Startup warning when daemon socket unreachable** ([#133](https://github.com/agent-receipts/openclaw/issues/133)):
+  If `daemonForwarding` is enabled but the resolved socket path is unreachable
+  at startup, the plugin now logs a clear two-line warning with the socket path
+  and a link to the daemon setup guide. Previously the mismatch was silent.
+- **Daemon setup documentation** ([#132](https://github.com/agent-receipts/openclaw/issues/132)):
+  README now includes a "Setting up the daemon" subsection under
+  `daemonForwarding` covering macOS (Homebrew), Linux (install script), and the
+  `XDG_RUNTIME_DIR` system-service gotcha.
+
+### Changed
+
+- Version bump to `0.8.0` to maintain lockstep with the coordinated
+  agent-receipts v0.8.0 release.
+
 ## [0.6.0] - 2026-05-02
 
 ### Changed (breaking)
@@ -157,7 +184,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Security hardening: key file permissions, input validation, pending-map memory
   leak prevention (#22).
 
-[Unreleased]: https://github.com/agent-receipts/openclaw/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/agent-receipts/openclaw/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/agent-receipts/openclaw/compare/v0.6.0...v0.8.0
 [0.6.0]: https://github.com/agent-receipts/openclaw/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/agent-receipts/openclaw/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/agent-receipts/openclaw/compare/v0.3.3...v0.4.0
