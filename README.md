@@ -304,6 +304,41 @@ Off by default. When enabled, each tool call is also forwarded to a local [agent
 >
 > Forwarding is fire-and-forget: a missing or unreachable daemon never blocks the plugin or affects in-process receipt creation. The socket path resolves from `AGENTRECEIPTS_SOCKET`, then `$TMPDIR/agentreceipts/events.sock` on macOS, or `$XDG_RUNTIME_DIR/agentreceipts/events.sock` on Linux.
 
+#### Setting up the daemon
+
+`daemonForwarding` requires the [agent-receipts daemon](https://agentreceipts.ai/getting-started/daemon-setup/) to be installed and running locally. If the daemon is absent or stopped, forwarding is silently skipped and in-process receipts are unaffected.
+
+**macOS (Homebrew — recommended):**
+
+```sh
+brew install agent-receipts/tap/agent-receipts-daemon
+brew services start agent-receipts-daemon
+```
+
+**Linux (one-command install):**
+
+```sh
+curl -fsSL https://github.com/agent-receipts/ar/releases/latest/download/install.sh | sh
+sudo loginctl enable-linger $USER   # one-time root step; log out and back in after
+```
+
+**Linux — openclaw gateway running as a system service** (`User=openclaw` in the unit file):
+
+`XDG_RUNTIME_DIR` is not set automatically for system services, so the plugin may resolve the wrong socket path. Add it via a drop-in override:
+
+```sh
+sudo systemctl edit openclaw
+```
+
+```ini
+[Service]
+Environment=XDG_RUNTIME_DIR=/run/user/1001   # replace 1001 with: id -u openclaw
+```
+
+Restart the gateway after saving.
+
+Full daemon documentation and the migration guide are at [agentreceipts.ai/getting-started/daemon-setup/](https://agentreceipts.ai/getting-started/daemon-setup/).
+
 ## Project structure
 
 ```
