@@ -5,7 +5,7 @@
 ### Agent Receipts plugin for OpenClaw
 
 [![npm](https://img.shields.io/npm/v/@agnt-rcpt/openclaw)](https://www.npmjs.com/package/@agnt-rcpt/openclaw)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-ESM-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![CI](https://github.com/agent-receipts/openclaw/actions/workflows/ci.yml/badge.svg)](https://github.com/agent-receipts/openclaw/actions/workflows/ci.yml)
 
@@ -380,4 +380,4 @@ pnpm test:coverage     # with V8 coverage
 
 ## License
 
-MIT
+Apache License 2.0 — see [LICENSE](LICENSE).
