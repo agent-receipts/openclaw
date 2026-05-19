@@ -130,4 +130,4 @@ Before opening a PR, verify:
 
 ## License
 
-MIT
+Apache 2.0

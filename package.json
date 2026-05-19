@@ -3,7 +3,7 @@
   "version": "0.8.0",
   "description": "Cryptographically signed audit trail for OpenClaw agent actions via Agent Receipts",
   "type": "module",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "author": "Otto Jongerius",
   "repository": {
     "type": "git",
