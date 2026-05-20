@@ -109,6 +109,8 @@ interface WireFrame {
   output?: unknown;
   error?: string;
   decision: string;
+  /** Events dropped since the last successful send. Omitted when zero. */
+  drop_count?: number;
 }
 
 /**
@@ -203,6 +205,18 @@ export class Emitter {
    * (with the same root cause) does not double-log.
    */
   private suppressNextWriteLog = false;
+  /**
+   * Count of events dropped since the last successful send. Flushed to the
+   * daemon as drop_count in the next successful frame so the gap appears in
+   * the chain as a synthetic events_dropped receipt (ADR-0010).
+   *
+   * Read and zeroed atomically in emit() before the first await — safe
+   * because emit() is synchronous up to its enqueueWrite() call and JS is
+   * single-threaded, so no other emit() can interleave between the read and
+   * zero. Restored (plus one for the frame itself) in doWrite() on transport
+   * failure.
+   */
+  private dropCount = 0;
 
   constructor(options: EmitterOptions = {}) {
     const socketPath = options.socketPath ?? defaultSocketPath();
@@ -253,6 +267,12 @@ export class Emitter {
       }
     }
 
+    // Capture and zero dropCount before the first await so no concurrent
+    // emit() can observe the same non-zero value. emit() is synchronous up
+    // to enqueueWrite(), and JS is single-threaded, so this is atomic.
+    const capturedDropCount = this.dropCount;
+    this.dropCount = 0;
+
     const wireFrame: WireFrame = {
       v: SUPPORTED_FRAME_VERSION,
       ts_emit: rfc3339Nano(),
@@ -266,17 +286,21 @@ export class Emitter {
       ...(parsedOutput?.ok ? { output: parsedOutput.value } : {}),
       ...(ev.error !== undefined ? { error: ev.error } : {}),
       decision: ev.decision,
+      ...(capturedDropCount > 0 ? { drop_count: capturedDropCount } : {}),
     };
 
     const body = Buffer.from(JSON.stringify(wireFrame), "utf8");
     if (body.length > MAX_FRAME_SIZE) {
+      // Restore the captured drop count so it isn't silently lost — it will
+      // be included in the next frame that fits within the size limit.
+      this.dropCount += capturedDropCount;
       return new Error(
         `emitter: frame too large: ${body.length} bytes (max ${MAX_FRAME_SIZE})`,
       );
     }
 
     // Serialise into the write queue so concurrent calls do not interleave.
-    return this.enqueueWrite(body);
+    return this.enqueueWrite(body, capturedDropCount);
   }
 
   /**
@@ -299,8 +323,8 @@ export class Emitter {
    * run in order; a failed write drops and resets the connection so the
    * next emit() re-dials transparently.
    */
-  private enqueueWrite(body: Buffer): Promise<Error | null> {
-    const next = this.writeQueue.then(() => this.doWrite(body));
+  private enqueueWrite(body: Buffer, capturedDropCount: number): Promise<Error | null> {
+    const next = this.writeQueue.then(() => this.doWrite(body, capturedDropCount));
     // Keep the queue advancing even if doWrite rejects (it should not, but guard it).
     this.writeQueue = next.then(
       () => {},
@@ -313,11 +337,14 @@ export class Emitter {
    * doWrite dials if needed, then writes the framed body. Returns null on
    * success, logs and returns null on transient errors (fire-and-forget).
    *
+   * On transport failure, restores capturedDropCount + 1 into dropCount so
+   * the next successful emit() reports the full gap to the daemon.
+   *
    * If the write fails on a previously-established connection (e.g. daemon
    * restarted), the dead socket is discarded and one transparent re-dial
    * and re-write is attempted before giving up.
    */
-  private async doWrite(body: Buffer): Promise<Error | null> {
+  private async doWrite(body: Buffer, capturedDropCount: number): Promise<Error | null> {
     // Re-check `closed` at execution time: emit() might have validated
     // and enqueued, then close() ran while we were waiting in the queue.
     if (this.closed) {
@@ -327,6 +354,9 @@ export class Emitter {
     const dialErr = await this.dialIfNeeded();
     if (dialErr !== null) {
       this.logDrop("dial", dialErr);
+      // Restore captured drops plus one for this frame, so the next
+      // successful emit() reports the full gap.
+      this.dropCount += capturedDropCount + 1;
       return null;
     }
 
@@ -346,31 +376,33 @@ export class Emitter {
       }
       this.suppressNextWriteLog = false;
       this.dropConn();
-      await this.retryWrite(body);
+      const retried = await this.retryWrite(body);
+      if (!retried) {
+        this.dropCount += capturedDropCount + 1;
+      }
     }
     return null;
   }
 
   /**
-   * retryWrite re-dials and writes once. On failure the connection is
-   * dropped and the error is logged. Separated into its own method so that
-   * TypeScript's narrowing of `this.conn` from `dropConn()` does not flow
-   * into this scope.
+   * retryWrite re-dials and writes once. Returns true on success, false on
+   * any transport failure. Separated into its own method so that TypeScript's
+   * narrowing of `this.conn` from `dropConn()` does not flow into this scope.
    */
-  private async retryWrite(body: Buffer): Promise<void> {
+  private async retryWrite(body: Buffer): Promise<boolean> {
     // close() may have run while we awaited the failed first write — bail
     // out so we don't open a fresh connection on a closed emitter.
     if (this.closed) {
-      return;
+      return false;
     }
     const redialErr = await this.dialIfNeeded();
     if (redialErr !== null) {
       this.logDrop("dial", redialErr);
-      return;
+      return false;
     }
     if (this.closed) {
       this.dropConn();
-      return;
+      return false;
     }
     const retryErr = await this.writeFrame(body);
     if (retryErr !== null) {
@@ -379,7 +411,9 @@ export class Emitter {
       }
       this.suppressNextWriteLog = false;
       this.dropConn();
+      return false;
     }
+    return true;
   }
 
   /** Destroy and null the current connection (if any). */

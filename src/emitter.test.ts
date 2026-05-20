@@ -730,6 +730,134 @@ describe("frame round-trip (in-process server)", () => {
 });
 
 // ---------------------------------------------------------------------------
+// drop_count tracking
+// ---------------------------------------------------------------------------
+
+describe("drop_count tracking", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = makeShortTmpDir();
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("omits drop_count when there are no prior drops", async () => {
+    const socketPath = join(tmpDir, "events.sock");
+    const { frames, close } = await createEchoServer(socketPath);
+
+    const emitter = new Emitter({ socketPath });
+    await emitter.emit({ tool: { name: "bash" }, decision: "allowed" });
+    await waitFor(() => frames.length >= 1);
+
+    const parsed = JSON.parse(frames[0].toString("utf8")) as Record<string, unknown>;
+    expect(parsed.drop_count).toBeUndefined();
+
+    emitter.close();
+    await close();
+  });
+
+  it("includes drop_count in the next successful frame after transport failures", async () => {
+    const socketPath = join(tmpDir, "drop.sock");
+    const emitter = new Emitter({ socketPath });
+
+    // No server listening — each emit fails and increments dropCount.
+    await emitter.emit({ tool: { name: "tool-1" }, decision: "allowed" });
+    await emitter.emit({ tool: { name: "tool-2" }, decision: "allowed" });
+
+    // Now start the server and send a third emit.
+    const { frames, close } = await createEchoServer(socketPath);
+    await emitter.emit({ tool: { name: "tool-3" }, decision: "allowed" });
+    await waitFor(() => frames.length >= 1);
+
+    const parsed = JSON.parse(frames[0].toString("utf8")) as Record<string, unknown>;
+    expect(parsed.drop_count).toBe(2);
+
+    emitter.close();
+    await close();
+  });
+
+  it("resets drop_count to zero after a successful flush", async () => {
+    const socketPath = join(tmpDir, "reset.sock");
+    const emitter = new Emitter({ socketPath });
+
+    // Cause one drop.
+    await emitter.emit({ tool: { name: "drop-1" }, decision: "allowed" });
+
+    // Start server — next emit flushes the drop count.
+    const { frames, close } = await createEchoServer(socketPath);
+    await emitter.emit({ tool: { name: "flush" }, decision: "allowed" });
+    await waitFor(() => frames.length >= 1);
+
+    const parsed1 = JSON.parse(frames[0].toString("utf8")) as Record<string, unknown>;
+    expect(parsed1.drop_count).toBe(1);
+
+    // Subsequent emit with no new drops must not include drop_count.
+    await emitter.emit({ tool: { name: "clean" }, decision: "allowed" });
+    await waitFor(() => frames.length >= 2);
+
+    const parsed2 = JSON.parse(frames[1].toString("utf8")) as Record<string, unknown>;
+    expect(parsed2.drop_count).toBeUndefined();
+
+    emitter.close();
+    await close();
+  });
+
+  it("accumulates drop_count across multiple failures before a flush", async () => {
+    const socketPath = join(tmpDir, "accum.sock");
+    const emitter = new Emitter({ socketPath });
+
+    // Five drops before any successful send.
+    for (let i = 0; i < 5; i++) {
+      await emitter.emit({ tool: { name: `drop-${i}` }, decision: "allowed" });
+    }
+
+    const { frames, close } = await createEchoServer(socketPath);
+    await emitter.emit({ tool: { name: "flush" }, decision: "allowed" });
+    await waitFor(() => frames.length >= 1);
+
+    const parsed = JSON.parse(frames[0].toString("utf8")) as Record<string, unknown>;
+    expect(parsed.drop_count).toBe(5);
+
+    emitter.close();
+    await close();
+  });
+
+  it("restores drop_count when the oversized-frame guard fires", async () => {
+    // An oversized frame is a caller bug — drop_count must survive so it is
+    // reported in the next frame that fits.
+    const socketPath = join(tmpDir, "oversize.sock");
+    const emitter = new Emitter({ socketPath });
+
+    // Cause one drop.
+    await emitter.emit({ tool: { name: "drop-1" }, decision: "allowed" });
+
+    // Attempt an oversized frame — must fail fast (Error) and not lose dropCount.
+    const bigValue = "x".repeat(MAX_FRAME_SIZE + 1);
+    const oversizeErr = await emitter.emit({
+      tool: { name: "big" },
+      input: JSON.stringify({ data: bigValue }),
+      decision: "allowed",
+    });
+    expect(oversizeErr).toBeInstanceOf(Error);
+    expect(oversizeErr!.message).toMatch(/frame too large/);
+
+    // Now start server — drop_count should still be 1.
+    const { frames, close } = await createEchoServer(socketPath);
+    await emitter.emit({ tool: { name: "flush" }, decision: "allowed" });
+    await waitFor(() => frames.length >= 1);
+
+    const parsed = JSON.parse(frames[0].toString("utf8")) as Record<string, unknown>;
+    expect(parsed.drop_count).toBe(1);
+
+    emitter.close();
+    await close();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Round-trip against the real daemon binary (skipped if binary absent)
 // ---------------------------------------------------------------------------
 
