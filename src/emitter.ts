@@ -222,12 +222,14 @@ export class Emitter {
    * daemon as drop_count in the next successful frame so the gap appears in
    * the chain as a synthetic events_dropped receipt (ADR-0010).
    *
-   * Read and zeroed atomically in emit() before the first await — safe
-   * because emit() is synchronous up to its enqueueWrite() call and JS is
-   * single-threaded, so no other emit() can interleave between the read and
-   * zero. On transport failure in doWrite(), restored plus one for the frame
-   * itself. On an oversized-frame caller bug, restored without +1 (the frame
-   * was never sent; it is not counted as a drop).
+   * Captured and zeroed inside doWrite() — at the serialized write-queue
+   * execution point — not in emit(). Capturing in emit() races when multiple
+   * fire-and-forget emits are in flight: a later emit can capture dropCount=0
+   * before an earlier queued write fails and increments it, causing the daemon
+   * to never learn about that drop in the immediately-following frame.
+   * Capturing in doWrite() ensures the value always reflects all failures from
+   * writes that completed before this one. On transport failure, restored plus
+   * one for the frame itself.
    */
   private dropCount = 0;
 
@@ -281,12 +283,6 @@ export class Emitter {
       }
     }
 
-    // Capture and zero dropCount before the first await so no concurrent
-    // emit() can observe the same non-zero value. emit() is synchronous up
-    // to enqueueWrite(), and JS is single-threaded, so this is atomic.
-    const capturedDropCount = this.dropCount;
-    this.dropCount = 0;
-
     const wireFrame: WireFrame = {
       v: SUPPORTED_FRAME_VERSION,
       ts_emit: rfc3339Nano(),
@@ -300,21 +296,21 @@ export class Emitter {
       ...(parsedOutput?.ok ? { output: parsedOutput.value } : {}),
       ...(ev.error !== undefined ? { error: ev.error } : {}),
       decision: ev.decision,
-      ...(capturedDropCount > 0 ? { drop_count: capturedDropCount } : {}),
     };
 
-    const body = Buffer.from(JSON.stringify(wireFrame), "utf8");
-    if (body.length > MAX_FRAME_SIZE) {
-      // Restore the captured drop count so it isn't silently lost — it will
-      // be included in the next frame that fits within the size limit.
-      this.dropCount += capturedDropCount;
+    // Preliminary size check without drop_count. doWrite() will inject
+    // drop_count (≤32 bytes) before the final send; a frame that passes here
+    // will not tip over MAX_FRAME_SIZE after that injection.
+    const prelimBody = Buffer.from(JSON.stringify(wireFrame), "utf8");
+    if (prelimBody.length > MAX_FRAME_SIZE) {
       return new Error(
-        `emitter: frame too large: ${body.length} bytes (max ${MAX_FRAME_SIZE})`,
+        `emitter: frame too large: ${prelimBody.length} bytes (max ${MAX_FRAME_SIZE})`,
       );
     }
 
-    // Serialise into the write queue so concurrent calls do not interleave.
-    return this.enqueueWrite(body, capturedDropCount);
+    // Enqueue the frame object. dropCount capture/zero and final serialisation
+    // happen inside doWrite() at the serialized write-queue execution point.
+    return this.enqueueWrite(wireFrame);
   }
 
   /**
@@ -343,12 +339,12 @@ export class Emitter {
   }
 
   /**
-   * Enqueue a serialised write onto the sequential write queue. All calls
-   * run in order; a failed write drops and resets the connection so the
-   * next emit() re-dials transparently.
+   * Enqueue a frame onto the sequential write queue. All calls run in order;
+   * a failed write drops and resets the connection so the next emit()
+   * re-dials transparently.
    */
-  private enqueueWrite(body: Buffer, capturedDropCount: number): Promise<Error | null> {
-    const next = this.writeQueue.then(() => this.doWrite(body, capturedDropCount));
+  private enqueueWrite(frame: WireFrame): Promise<Error | null> {
+    const next = this.writeQueue.then(() => this.doWrite(frame));
     // Keep the queue advancing even if doWrite rejects (it should not, but guard it).
     this.writeQueue = next.then(
       () => {},
@@ -358,22 +354,35 @@ export class Emitter {
   }
 
   /**
-   * doWrite dials if needed, then writes the framed body. Returns null on
-   * success, logs and returns null on transient errors (fire-and-forget).
+   * doWrite captures the current drop count, serialises the frame with it
+   * injected, dials if needed, then writes. Returns null on success and on
+   * transient transport errors (fire-and-forget). On transport failure,
+   * restores capturedDropCount + 1 into dropCount so the next successful
+   * emit() reports the full gap to the daemon.
    *
-   * On transport failure, restores capturedDropCount + 1 into dropCount so
-   * the next successful emit() reports the full gap to the daemon.
+   * dropCount is captured here — inside the serialized write queue — rather
+   * than in emit(). Capturing in emit() races when multiple fire-and-forget
+   * emits are in flight (see dropCount field comment for details).
    *
    * If the write fails on a previously-established connection (e.g. daemon
    * restarted), the dead socket is discarded and one transparent re-dial
    * and re-write is attempted before giving up.
    */
-  private async doWrite(body: Buffer, capturedDropCount: number): Promise<Error | null> {
+  private async doWrite(frame: WireFrame): Promise<Error | null> {
     // Re-check `closed` at execution time: emit() might have validated
     // and enqueued, then close() ran while we were waiting in the queue.
     if (this.closed) {
       return null;
     }
+
+    // Capture and zero dropCount here, at the serialized write-queue
+    // execution point, so the value reflects all prior write failures.
+    const capturedDropCount = this.dropCount;
+    this.dropCount = 0;
+
+    const body = capturedDropCount > 0
+      ? Buffer.from(JSON.stringify({ ...frame, drop_count: capturedDropCount }), "utf8")
+      : Buffer.from(JSON.stringify(frame), "utf8");
 
     const dialErr = await this.dialIfNeeded();
     if (dialErr !== null) {

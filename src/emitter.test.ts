@@ -933,6 +933,84 @@ describe("drop_count tracking", () => {
     await close();
   });
 
+  it("reports drop_count correctly when an earlier concurrent emit fails and a later one succeeds", async () => {
+    // Regression for the race fixed in this PR: if dropCount is captured in
+    // emit() rather than doWrite(), a later fire-and-forget emit captures
+    // dropCount=0 before the earlier queued write fails. The later frame would
+    // then omit drop_count even though a drop occurred.
+    const socketPath = join(tmpDir, "concurrent-drop.sock");
+
+    // Start a server that accepts exactly one connection, records the first
+    // frame, then destroys the connection so the emitter must redial.
+    const frames: Buffer[] = [];
+    const s1 = createServer((socket) => {
+      let buf = Buffer.alloc(0);
+      socket.on("data", (chunk: Buffer) => {
+        buf = Buffer.concat([buf, chunk]);
+        while (buf.length >= 4) {
+          const len = buf.readUInt32BE(0);
+          if (buf.length < 4 + len) break;
+          frames.push(buf.subarray(4, 4 + len));
+          buf = buf.subarray(4 + len);
+          // Destroy after the first frame to force a drop on the next write.
+          socket.destroy();
+        }
+      });
+    });
+    await new Promise<void>((resolve) => s1.listen(socketPath, resolve));
+
+    const emitter = new Emitter({ socketPath });
+
+    // First emit: connects and delivers.
+    await emitter.emit({ tool: { name: "tool-1" }, decision: "allowed" });
+    await waitFor(() => frames.length >= 1, 2000);
+
+    // Give the peer-reset error time to surface on the emitter's conn.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Close s1 and remove the socket so the next dial will fail.
+    await new Promise<void>((resolve, reject) =>
+      s1.close((e) => (e ? reject(e) : resolve())),
+    );
+    rmSync(socketPath, { force: true });
+
+    // Two fire-and-forget emits with no server — both should drop.
+    // The key property under test: doWrite() captures dropCount at execution
+    // time (serialized), so both drops accumulate correctly rather than the
+    // second emit seeing dropCount=0 and losing the first drop.
+    const p1 = emitter.emit({ tool: { name: "tool-2" }, decision: "allowed" });
+    const p2 = emitter.emit({ tool: { name: "tool-3" }, decision: "allowed" });
+    await p1;
+    await p2;
+
+    // Start a new server and flush — drop_count must be 2.
+    const frames2: Buffer[] = [];
+    const s2 = createServer((socket) => {
+      let buf = Buffer.alloc(0);
+      socket.on("data", (chunk: Buffer) => {
+        buf = Buffer.concat([buf, chunk]);
+        while (buf.length >= 4) {
+          const len = buf.readUInt32BE(0);
+          if (buf.length < 4 + len) break;
+          frames2.push(buf.subarray(4, 4 + len));
+          buf = buf.subarray(4 + len);
+        }
+      });
+    });
+    await new Promise<void>((resolve) => s2.listen(socketPath, resolve));
+
+    await emitter.emit({ tool: { name: "flush" }, decision: "allowed" });
+    await waitFor(() => frames2.length >= 1, 2000);
+
+    const parsed = JSON.parse(frames2[0].toString("utf8")) as Record<string, unknown>;
+    expect(parsed.drop_count).toBe(2);
+
+    emitter.close();
+    await new Promise<void>((resolve, reject) =>
+      s2.close((e) => (e ? reject(e) : resolve())),
+    );
+  }, 10_000);
+
   it("fires warnLog when close() is called with unflushed drops", async () => {
     const socketPath = join(tmpDir, "warn.sock");
     const warnings: Array<{ message: string; attrs: Record<string, string> }> = [];
