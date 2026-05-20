@@ -404,8 +404,15 @@ export class Emitter {
 
     // close() may have run while we were dialing; in that case dialIfNeeded()
     // still opened a fresh socket — discard it and bail before writing.
+    // capturedDropCount was already zeroed so restore it here (plus one for
+    // this frame) the same way the dial-fail path does.
     if (this.closed) {
       this.dropConn();
+      this.dropCount += capturedDropCount + 1;
+      this.warnLog("agent-receipts emitter closed with unflushed drops", {
+        drop_count: String(this.dropCount),
+        socket: this.socketPath,
+      });
       return null;
     }
 
