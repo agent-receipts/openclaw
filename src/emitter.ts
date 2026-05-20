@@ -298,18 +298,10 @@ export class Emitter {
       decision: ev.decision,
     };
 
-    // Preliminary size check without drop_count. doWrite() will inject
-    // drop_count (≤32 bytes) before the final send; a frame that passes here
-    // will not tip over MAX_FRAME_SIZE after that injection.
-    const prelimBody = Buffer.from(JSON.stringify(wireFrame), "utf8");
-    if (prelimBody.length > MAX_FRAME_SIZE) {
-      return new Error(
-        `emitter: frame too large: ${prelimBody.length} bytes (max ${MAX_FRAME_SIZE})`,
-      );
-    }
-
-    // Enqueue the frame object. dropCount capture/zero and final serialisation
-    // happen inside doWrite() at the serialized write-queue execution point.
+    // Enqueue the frame object. dropCount capture/zero, drop_count injection,
+    // serialisation, and the size check all happen inside doWrite() at the
+    // serialized write-queue execution point — after drop_count is injected —
+    // so the size limit is enforced on the actual bytes that will be sent.
     return this.enqueueWrite(wireFrame);
   }
 
@@ -384,12 +376,29 @@ export class Emitter {
       ? Buffer.from(JSON.stringify({ ...frame, drop_count: capturedDropCount }), "utf8")
       : Buffer.from(JSON.stringify(frame), "utf8");
 
+    // Size check after drop_count injection — the limit applies to the actual
+    // bytes that will be sent. Restore capturedDropCount (no +1; the frame was
+    // never sent) so it appears in the next successfully delivered frame.
+    if (body.length > MAX_FRAME_SIZE) {
+      this.dropCount += capturedDropCount;
+      return new Error(
+        `emitter: frame too large: ${body.length} bytes (max ${MAX_FRAME_SIZE})`,
+      );
+    }
+
     const dialErr = await this.dialIfNeeded();
     if (dialErr !== null) {
       this.logDrop("dial", dialErr);
       // Restore captured drops plus one for this frame, so the next
-      // successful emit() reports the full gap.
+      // successful emit() reports the full gap. If the emitter is already
+      // closed, no future emit() will flush — warn immediately.
       this.dropCount += capturedDropCount + 1;
+      if (this.closed) {
+        this.warnLog("agent-receipts emitter closed with unflushed drops", {
+          drop_count: String(this.dropCount),
+          socket: this.socketPath,
+        });
+      }
       return null;
     }
 
@@ -411,7 +420,15 @@ export class Emitter {
       this.dropConn();
       const retried = await this.retryWrite(body);
       if (!retried) {
+        // Restore captured drops plus one for this frame. If the emitter is
+        // already closed, no future emit() will flush — warn immediately.
         this.dropCount += capturedDropCount + 1;
+        if (this.closed) {
+          this.warnLog("agent-receipts emitter closed with unflushed drops", {
+            drop_count: String(this.dropCount),
+            socket: this.socketPath,
+          });
+        }
       }
       // Note: the branch where retried === true (write fails, retry delivers)
       // is correct — capturedDropCount was already zeroed and the frame was

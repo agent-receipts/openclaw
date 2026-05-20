@@ -1032,6 +1032,39 @@ describe("drop_count tracking", () => {
     expect(warnings[0].attrs.drop_count).toBe("2");
   });
 
+  it("fires warnLog from doWrite when close() ran before the dial failed", async () => {
+    // close() checks dropCount at the instant it runs. If doWrite() has already
+    // captured+zeroed dropCount (but not yet failed), close() sees 0 and does
+    // not warn. The new warnLog call in doWrite's failure-restoration path
+    // covers this window: when the dial fails and doWrite restores dropCount,
+    // it also fires warnLog when it detects the emitter is closed.
+    const socketPath = join(tmpDir, "close-race.sock");
+    const warnings: Array<{ message: string; attrs: Record<string, string> }> = [];
+
+    const emitter = new Emitter({
+      socketPath,
+      warnLog: (message, attrs) => warnings.push({ message, attrs }),
+    });
+
+    // Enqueue a write with no server — doWrite will dial and fail.
+    const emitPromise = emitter.emit({ tool: { name: "tool-1" }, decision: "allowed" });
+
+    // Yield one microtask tick so doWrite starts and reaches the dialIfNeeded()
+    // await (at which point it has already zeroed dropCount). This works because
+    // the `.then(() => doWrite(...))` microtask from enqueueWrite was scheduled
+    // before this await, so it runs first.
+    await Promise.resolve();
+
+    // close() now sees dropCount=0 and does not warn. When the dial fails,
+    // doWrite restores dropCount and detects this.closed — it warns then.
+    emitter.close();
+    await emitPromise;
+
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].message).toMatch(/unflushed drops/);
+    expect(warnings[0].attrs.drop_count).toBe("1");
+  });
+
   it("does not fire warnLog when close() is called with no pending drops", async () => {
     const socketPath = join(tmpDir, "no-warn.sock");
     const warnings: string[] = [];
