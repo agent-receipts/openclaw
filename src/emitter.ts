@@ -418,15 +418,20 @@ export class Emitter {
 
     const writeErr = await this.writeFrame(body);
     if (writeErr !== null) {
-      // If handleConnError already logged this for us (peer reset surfaced
-      // asynchronously), skip the duplicate "write" line.
-      if (!this.suppressNextWriteLog) {
-        this.logDrop("write", writeErr);
-      }
+      // Capture the suppress flag before clearing it. logDrop fires only
+      // when the retry also fails — a successful retry means the event was
+      // delivered, so no drop should be logged.
+      const shouldLogDrop = !this.suppressNextWriteLog;
       this.suppressNextWriteLog = false;
       this.dropConn();
       const retried = await this.retryWrite(body);
       if (!retried) {
+        // Log the drop only now that we know the retry failed too. If
+        // handleConnError already logged a "conn" drop for this socket
+        // (shouldLogDrop is false), suppress to avoid a duplicate line.
+        if (shouldLogDrop) {
+          this.logDrop("write", writeErr);
+        }
         // Restore captured drops plus one for this frame. If the emitter is
         // already closed, no future emit() will flush — warn immediately.
         this.dropCount += capturedDropCount + 1;
@@ -437,13 +442,7 @@ export class Emitter {
           });
         }
       }
-      // Note: the branch where retried === true (write fails, retry delivers)
-      // is correct — capturedDropCount was already zeroed and the frame was
-      // delivered — but is not directly testable: conn.write() succeeds when
-      // data is queued in the kernel buffer, so write callbacks resolve with
-      // null even when the peer is immediately destroyed, making it
-      // impossible to deterministically trigger a write error followed by a
-      // successful retry via a real Unix socket in unit tests.
+      // When retried === true the event was delivered; no drop log needed.
     }
     return null;
   }
