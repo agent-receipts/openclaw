@@ -730,6 +730,361 @@ describe("frame round-trip (in-process server)", () => {
 });
 
 // ---------------------------------------------------------------------------
+// drop_count tracking
+// ---------------------------------------------------------------------------
+
+describe("drop_count tracking", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = makeShortTmpDir();
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("omits drop_count when there are no prior drops", async () => {
+    const socketPath = join(tmpDir, "events.sock");
+    const { frames, close } = await createEchoServer(socketPath);
+
+    const emitter = new Emitter({ socketPath });
+    await emitter.emit({ tool: { name: "bash" }, decision: "allowed" });
+    await waitFor(() => frames.length >= 1);
+
+    const parsed = JSON.parse(frames[0].toString("utf8")) as Record<string, unknown>;
+    expect(parsed.drop_count).toBeUndefined();
+
+    emitter.close();
+    await close();
+  });
+
+  it("includes drop_count in the next successful frame after transport failures", async () => {
+    const socketPath = join(tmpDir, "drop.sock");
+    const emitter = new Emitter({ socketPath });
+
+    // No server listening — each emit fails and increments dropCount.
+    await emitter.emit({ tool: { name: "tool-1" }, decision: "allowed" });
+    await emitter.emit({ tool: { name: "tool-2" }, decision: "allowed" });
+
+    // Now start the server and send a third emit.
+    const { frames, close } = await createEchoServer(socketPath);
+    await emitter.emit({ tool: { name: "tool-3" }, decision: "allowed" });
+    await waitFor(() => frames.length >= 1);
+
+    const parsed = JSON.parse(frames[0].toString("utf8")) as Record<string, unknown>;
+    expect(parsed.drop_count).toBe(2);
+
+    emitter.close();
+    await close();
+  });
+
+  it("resets drop_count to zero after a successful flush", async () => {
+    const socketPath = join(tmpDir, "reset.sock");
+    const emitter = new Emitter({ socketPath });
+
+    // Cause one drop.
+    await emitter.emit({ tool: { name: "drop-1" }, decision: "allowed" });
+
+    // Start server — next emit flushes the drop count.
+    const { frames, close } = await createEchoServer(socketPath);
+    await emitter.emit({ tool: { name: "flush" }, decision: "allowed" });
+    await waitFor(() => frames.length >= 1);
+
+    const parsed1 = JSON.parse(frames[0].toString("utf8")) as Record<string, unknown>;
+    expect(parsed1.drop_count).toBe(1);
+
+    // Subsequent emit with no new drops must not include drop_count.
+    await emitter.emit({ tool: { name: "clean" }, decision: "allowed" });
+    await waitFor(() => frames.length >= 2);
+
+    const parsed2 = JSON.parse(frames[1].toString("utf8")) as Record<string, unknown>;
+    expect(parsed2.drop_count).toBeUndefined();
+
+    emitter.close();
+    await close();
+  });
+
+  it("accumulates drop_count across multiple failures before a flush", async () => {
+    const socketPath = join(tmpDir, "accum.sock");
+    const emitter = new Emitter({ socketPath });
+
+    // Five drops before any successful send.
+    for (let i = 0; i < 5; i++) {
+      await emitter.emit({ tool: { name: `drop-${i}` }, decision: "allowed" });
+    }
+
+    const { frames, close } = await createEchoServer(socketPath);
+    await emitter.emit({ tool: { name: "flush" }, decision: "allowed" });
+    await waitFor(() => frames.length >= 1);
+
+    const parsed = JSON.parse(frames[0].toString("utf8")) as Record<string, unknown>;
+    expect(parsed.drop_count).toBe(5);
+
+    emitter.close();
+    await close();
+  });
+
+  it(
+    "does not accumulate drop_count across a reconnect with prior drops",
+    async () => {
+      // When drops accumulate (daemon down), then a server starts and the
+      // emitter successfully delivers the first frame (flush), dropCount is
+      // zeroed. A subsequent reconnect (emitter re-dials after a peer reset)
+      // must not re-inflate dropCount — the drop_count was already flushed.
+      const socketPath = join(tmpDir, "reconn-drop.sock");
+      const emitter = new Emitter({ socketPath });
+
+      // Cause two drops.
+      await emitter.emit({ tool: { name: "drop-1" }, decision: "allowed" });
+      await emitter.emit({ tool: { name: "drop-2" }, decision: "allowed" });
+
+      // First server: receives one frame (the flush) then forcefully destroys
+      // the connection so the emitter sees a dead conn on the next emit.
+      const frames1: Buffer[] = [];
+      const s1 = createServer((socket) => {
+        let buf = Buffer.alloc(0);
+        socket.on("data", (chunk: Buffer) => {
+          buf = Buffer.concat([buf, chunk]);
+          if (buf.length >= 4) {
+            const len = buf.readUInt32BE(0);
+            if (buf.length >= 4 + len) {
+              frames1.push(buf.subarray(4, 4 + len));
+              socket.destroy();
+            }
+          }
+        });
+      });
+      await new Promise<void>((resolve) => s1.listen(socketPath, resolve));
+
+      // Flush: delivers with drop_count: 2.
+      await emitter.emit({ tool: { name: "flush" }, decision: "allowed" });
+      await waitFor(() => frames1.length >= 1, 2000);
+
+      const flushed = JSON.parse(frames1[0].toString("utf8")) as Record<string, unknown>;
+      expect(flushed.drop_count).toBe(2);
+
+      // Tear down s1, wait for peer reset to propagate, start s2.
+      await new Promise<void>((resolve, reject) =>
+        s1.close((e) => (e ? reject(e) : resolve())),
+      );
+      rmSync(socketPath, { force: true });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      const frames2: Buffer[] = [];
+      const s2 = createServer((socket) => {
+        let buf = Buffer.alloc(0);
+        socket.on("data", (chunk: Buffer) => {
+          buf = Buffer.concat([buf, chunk]);
+          while (buf.length >= 4) {
+            const len = buf.readUInt32BE(0);
+            if (buf.length < 4 + len) break;
+            frames2.push(buf.subarray(4, 4 + len));
+            buf = buf.subarray(4 + len);
+          }
+        });
+      });
+      await new Promise<void>((resolve) => s2.listen(socketPath, resolve));
+
+      // Next emit after reconnect: drop_count must be absent — the flush
+      // already zeroed it; the reconnect itself must not re-add to dropCount.
+      await emitter.emit({ tool: { name: "after-reconnect" }, decision: "allowed" });
+      await waitFor(() => frames2.length >= 1, 2000);
+
+      const afterReconn = JSON.parse(frames2[0].toString("utf8")) as Record<string, unknown>;
+      expect(afterReconn.drop_count).toBeUndefined();
+
+      emitter.close();
+      await new Promise<void>((resolve, reject) =>
+        s2.close((e) => (e ? reject(e) : resolve())),
+      );
+    },
+    10_000,
+  );
+
+  it("restores drop_count when the oversized-frame guard fires", async () => {
+    // An oversized frame is a caller bug — drop_count must survive so it is
+    // reported in the next frame that fits.
+    const socketPath = join(tmpDir, "oversize.sock");
+    const emitter = new Emitter({ socketPath });
+
+    // Cause one drop.
+    await emitter.emit({ tool: { name: "drop-1" }, decision: "allowed" });
+
+    // Attempt an oversized frame — must fail fast (Error) and not lose dropCount.
+    const bigValue = "x".repeat(MAX_FRAME_SIZE + 1);
+    const oversizeErr = await emitter.emit({
+      tool: { name: "big" },
+      input: JSON.stringify({ data: bigValue }),
+      decision: "allowed",
+    });
+    expect(oversizeErr).toBeInstanceOf(Error);
+    expect(oversizeErr!.message).toMatch(/frame too large/);
+
+    // Now start server — drop_count should still be 1.
+    const { frames, close } = await createEchoServer(socketPath);
+    await emitter.emit({ tool: { name: "flush" }, decision: "allowed" });
+    await waitFor(() => frames.length >= 1);
+
+    const parsed = JSON.parse(frames[0].toString("utf8")) as Record<string, unknown>;
+    expect(parsed.drop_count).toBe(1);
+
+    emitter.close();
+    await close();
+  });
+
+  it("reports drop_count correctly when an earlier concurrent emit fails and a later one succeeds", async () => {
+    // Regression for the race fixed in this PR: if dropCount is captured in
+    // emit() rather than doWrite(), a later fire-and-forget emit captures
+    // dropCount=0 before the earlier queued write fails. The later frame would
+    // then omit drop_count even though a drop occurred.
+    const socketPath = join(tmpDir, "concurrent-drop.sock");
+
+    // Start a server that accepts exactly one connection, records the first
+    // frame, then destroys the connection so the emitter must redial.
+    const frames: Buffer[] = [];
+    const s1 = createServer((socket) => {
+      let buf = Buffer.alloc(0);
+      socket.on("data", (chunk: Buffer) => {
+        buf = Buffer.concat([buf, chunk]);
+        while (buf.length >= 4) {
+          const len = buf.readUInt32BE(0);
+          if (buf.length < 4 + len) break;
+          frames.push(buf.subarray(4, 4 + len));
+          buf = buf.subarray(4 + len);
+          // Destroy after the first frame to force a drop on the next write.
+          socket.destroy();
+        }
+      });
+    });
+    await new Promise<void>((resolve) => s1.listen(socketPath, resolve));
+
+    const emitter = new Emitter({ socketPath });
+
+    // First emit: connects and delivers.
+    await emitter.emit({ tool: { name: "tool-1" }, decision: "allowed" });
+    await waitFor(() => frames.length >= 1, 2000);
+
+    // Give the peer-reset error time to surface on the emitter's conn.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Close s1 and remove the socket so the next dial will fail.
+    await new Promise<void>((resolve, reject) =>
+      s1.close((e) => (e ? reject(e) : resolve())),
+    );
+    rmSync(socketPath, { force: true });
+
+    // Two fire-and-forget emits with no server — both should drop.
+    // The key property under test: doWrite() captures dropCount at execution
+    // time (serialized), so both drops accumulate correctly rather than the
+    // second emit seeing dropCount=0 and losing the first drop.
+    const p1 = emitter.emit({ tool: { name: "tool-2" }, decision: "allowed" });
+    const p2 = emitter.emit({ tool: { name: "tool-3" }, decision: "allowed" });
+    await p1;
+    await p2;
+
+    // Start a new server and flush — drop_count must be 2.
+    const frames2: Buffer[] = [];
+    const s2 = createServer((socket) => {
+      let buf = Buffer.alloc(0);
+      socket.on("data", (chunk: Buffer) => {
+        buf = Buffer.concat([buf, chunk]);
+        while (buf.length >= 4) {
+          const len = buf.readUInt32BE(0);
+          if (buf.length < 4 + len) break;
+          frames2.push(buf.subarray(4, 4 + len));
+          buf = buf.subarray(4 + len);
+        }
+      });
+    });
+    await new Promise<void>((resolve) => s2.listen(socketPath, resolve));
+
+    await emitter.emit({ tool: { name: "flush" }, decision: "allowed" });
+    await waitFor(() => frames2.length >= 1, 2000);
+
+    const parsed = JSON.parse(frames2[0].toString("utf8")) as Record<string, unknown>;
+    expect(parsed.drop_count).toBe(2);
+
+    emitter.close();
+    await new Promise<void>((resolve, reject) =>
+      s2.close((e) => (e ? reject(e) : resolve())),
+    );
+  }, 10_000);
+
+  it("fires warnLog when close() is called with unflushed drops", async () => {
+    const socketPath = join(tmpDir, "warn.sock");
+    const warnings: Array<{ message: string; attrs: Record<string, string> }> = [];
+
+    const emitter = new Emitter({
+      socketPath,
+      warnLog: (message, attrs) => warnings.push({ message, attrs }),
+    });
+
+    // Cause drops with no server listening.
+    await emitter.emit({ tool: { name: "drop-1" }, decision: "allowed" });
+    await emitter.emit({ tool: { name: "drop-2" }, decision: "allowed" });
+
+    // Close without flushing — warnLog must fire.
+    emitter.close();
+
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].message).toMatch(/unflushed drops/);
+    expect(warnings[0].attrs.drop_count).toBe("2");
+  });
+
+  it("fires warnLog from doWrite when close() ran before the dial failed", async () => {
+    // close() checks dropCount at the instant it runs. If doWrite() has already
+    // captured+zeroed dropCount (but not yet failed), close() sees 0 and does
+    // not warn. The new warnLog call in doWrite's failure-restoration path
+    // covers this window: when the dial fails and doWrite restores dropCount,
+    // it also fires warnLog when it detects the emitter is closed.
+    const socketPath = join(tmpDir, "close-race.sock");
+    const warnings: Array<{ message: string; attrs: Record<string, string> }> = [];
+
+    const emitter = new Emitter({
+      socketPath,
+      warnLog: (message, attrs) => warnings.push({ message, attrs }),
+    });
+
+    // Enqueue a write with no server — doWrite will dial and fail.
+    const emitPromise = emitter.emit({ tool: { name: "tool-1" }, decision: "allowed" });
+
+    // Yield one microtask tick so doWrite starts and reaches the dialIfNeeded()
+    // await (at which point it has already zeroed dropCount). This works because
+    // the `.then(() => doWrite(...))` microtask from enqueueWrite was scheduled
+    // before this await, so it runs first.
+    await Promise.resolve();
+
+    // close() now sees dropCount=0 and does not warn. When the dial fails,
+    // doWrite restores dropCount and detects this.closed — it warns then.
+    emitter.close();
+    await emitPromise;
+
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].message).toMatch(/unflushed drops/);
+    expect(warnings[0].attrs.drop_count).toBe("1");
+  });
+
+  it("does not fire warnLog when close() is called with no pending drops", async () => {
+    const socketPath = join(tmpDir, "no-warn.sock");
+    const warnings: string[] = [];
+
+    const { close } = await createEchoServer(socketPath);
+    const emitter = new Emitter({
+      socketPath,
+      warnLog: (message) => warnings.push(message),
+    });
+
+    // Successful emit — no drops pending.
+    await emitter.emit({ tool: { name: "bash" }, decision: "allowed" });
+    emitter.close();
+
+    expect(warnings).toHaveLength(0);
+    await close();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Round-trip against the real daemon binary (skipped if binary absent)
 // ---------------------------------------------------------------------------
 
