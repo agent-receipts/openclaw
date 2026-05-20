@@ -825,6 +825,83 @@ describe("drop_count tracking", () => {
     await close();
   });
 
+  it(
+    "does not accumulate drop_count across a reconnect with prior drops",
+    async () => {
+      // When drops accumulate (daemon down), then a server starts and the
+      // emitter successfully delivers the first frame (flush), dropCount is
+      // zeroed. A subsequent reconnect (emitter re-dials after a peer reset)
+      // must not re-inflate dropCount — the drop_count was already flushed.
+      const socketPath = join(tmpDir, "reconn-drop.sock");
+      const emitter = new Emitter({ socketPath });
+
+      // Cause two drops.
+      await emitter.emit({ tool: { name: "drop-1" }, decision: "allowed" });
+      await emitter.emit({ tool: { name: "drop-2" }, decision: "allowed" });
+
+      // First server: receives one frame (the flush) then forcefully destroys
+      // the connection so the emitter sees a dead conn on the next emit.
+      const frames1: Buffer[] = [];
+      const s1 = createServer((socket) => {
+        let buf = Buffer.alloc(0);
+        socket.on("data", (chunk: Buffer) => {
+          buf = Buffer.concat([buf, chunk]);
+          if (buf.length >= 4) {
+            const len = buf.readUInt32BE(0);
+            if (buf.length >= 4 + len) {
+              frames1.push(buf.subarray(4, 4 + len));
+              socket.destroy();
+            }
+          }
+        });
+      });
+      await new Promise<void>((resolve) => s1.listen(socketPath, resolve));
+
+      // Flush: delivers with drop_count: 2.
+      await emitter.emit({ tool: { name: "flush" }, decision: "allowed" });
+      await waitFor(() => frames1.length >= 1, 2000);
+
+      const flushed = JSON.parse(frames1[0].toString("utf8")) as Record<string, unknown>;
+      expect(flushed.drop_count).toBe(2);
+
+      // Tear down s1, wait for peer reset to propagate, start s2.
+      await new Promise<void>((resolve, reject) =>
+        s1.close((e) => (e ? reject(e) : resolve())),
+      );
+      rmSync(socketPath, { force: true });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      const frames2: Buffer[] = [];
+      const s2 = createServer((socket) => {
+        let buf = Buffer.alloc(0);
+        socket.on("data", (chunk: Buffer) => {
+          buf = Buffer.concat([buf, chunk]);
+          while (buf.length >= 4) {
+            const len = buf.readUInt32BE(0);
+            if (buf.length < 4 + len) break;
+            frames2.push(buf.subarray(4, 4 + len));
+            buf = buf.subarray(4 + len);
+          }
+        });
+      });
+      await new Promise<void>((resolve) => s2.listen(socketPath, resolve));
+
+      // Next emit after reconnect: drop_count must be absent — the flush
+      // already zeroed it; the reconnect itself must not re-add to dropCount.
+      await emitter.emit({ tool: { name: "after-reconnect" }, decision: "allowed" });
+      await waitFor(() => frames2.length >= 1, 2000);
+
+      const afterReconn = JSON.parse(frames2[0].toString("utf8")) as Record<string, unknown>;
+      expect(afterReconn.drop_count).toBeUndefined();
+
+      emitter.close();
+      await new Promise<void>((resolve, reject) =>
+        s2.close((e) => (e ? reject(e) : resolve())),
+      );
+    },
+    10_000,
+  );
+
   it("restores drop_count when the oversized-frame guard fires", async () => {
     // An oversized frame is a caller bug — drop_count must survive so it is
     // reported in the next frame that fits.
@@ -853,6 +930,45 @@ describe("drop_count tracking", () => {
     expect(parsed.drop_count).toBe(1);
 
     emitter.close();
+    await close();
+  });
+
+  it("fires warnLog when close() is called with unflushed drops", async () => {
+    const socketPath = join(tmpDir, "warn.sock");
+    const warnings: Array<{ message: string; attrs: Record<string, string> }> = [];
+
+    const emitter = new Emitter({
+      socketPath,
+      warnLog: (message, attrs) => warnings.push({ message, attrs }),
+    });
+
+    // Cause drops with no server listening.
+    await emitter.emit({ tool: { name: "drop-1" }, decision: "allowed" });
+    await emitter.emit({ tool: { name: "drop-2" }, decision: "allowed" });
+
+    // Close without flushing — warnLog must fire.
+    emitter.close();
+
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].message).toMatch(/unflushed drops/);
+    expect(warnings[0].attrs.drop_count).toBe("2");
+  });
+
+  it("does not fire warnLog when close() is called with no pending drops", async () => {
+    const socketPath = join(tmpDir, "no-warn.sock");
+    const warnings: string[] = [];
+
+    const { close } = await createEchoServer(socketPath);
+    const emitter = new Emitter({
+      socketPath,
+      warnLog: (message) => warnings.push(message),
+    });
+
+    // Successful emit — no drops pending.
+    await emitter.emit({ tool: { name: "bash" }, decision: "allowed" });
+    emitter.close();
+
+    expect(warnings).toHaveLength(0);
     await close();
   });
 });

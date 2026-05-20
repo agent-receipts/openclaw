@@ -93,6 +93,14 @@ export interface EmitterOptions {
    * Pass `console.debug` or a structured logger to surface drops.
    */
   debugLog?: (message: string, attrs: Record<string, string>) => void;
+  /**
+   * Logger function for warning-level diagnostics. Defaults to no-op.
+   * Wire this to your logger's warn channel — unlike debugLog, warnings from
+   * the emitter indicate conditions the operator should know about (e.g.
+   * pending drops discarded on close). Pass `console.warn` or a structured
+   * logger to make these visible.
+   */
+  warnLog?: (message: string, attrs: Record<string, string>) => void;
 }
 
 /** Wire frame sent to the daemon. Field names must match the daemon's EmitterFrame exactly. */
@@ -194,6 +202,10 @@ export class Emitter {
     message: string,
     attrs: Record<string, string>,
   ) => void;
+  private readonly warnLog: (
+    message: string,
+    attrs: Record<string, string>,
+  ) => void;
 
   private conn: ReturnType<typeof createConnection> | null = null;
   private closed = false;
@@ -213,8 +225,9 @@ export class Emitter {
    * Read and zeroed atomically in emit() before the first await — safe
    * because emit() is synchronous up to its enqueueWrite() call and JS is
    * single-threaded, so no other emit() can interleave between the read and
-   * zero. Restored (plus one for the frame itself) in doWrite() on transport
-   * failure.
+   * zero. On transport failure in doWrite(), restored plus one for the frame
+   * itself. On an oversized-frame caller bug, restored without +1 (the frame
+   * was never sent; it is not counted as a drop).
    */
   private dropCount = 0;
 
@@ -229,6 +242,7 @@ export class Emitter {
     const trimmedSessionId = options.sessionId?.trim();
     this.sessionId = trimmedSessionId ? trimmedSessionId : randomUUID();
     this.debugLog = options.debugLog ?? ((): void => {});
+    this.warnLog = options.warnLog ?? ((): void => {});
   }
 
   /**
@@ -306,12 +320,22 @@ export class Emitter {
   /**
    * Close releases the underlying connection. After close(), subsequent
    * emit() calls return an Error. Safe to call multiple times.
+   *
+   * If drops accumulated since the last successful send and close() is called
+   * before a successful flush, those drops are discarded — the daemon will
+   * never learn about them. warnLog is called to surface this condition.
    */
   close(): void {
     if (this.closed) {
       return;
     }
     this.closed = true;
+    if (this.dropCount > 0) {
+      this.warnLog("agent-receipts emitter closed with unflushed drops", {
+        drop_count: String(this.dropCount),
+        socket: this.socketPath,
+      });
+    }
     if (this.conn !== null) {
       this.conn.destroy();
       this.conn = null;
@@ -380,6 +404,13 @@ export class Emitter {
       if (!retried) {
         this.dropCount += capturedDropCount + 1;
       }
+      // Note: the branch where retried === true (write fails, retry delivers)
+      // is correct — capturedDropCount was already zeroed and the frame was
+      // delivered — but is not directly testable: conn.write() succeeds when
+      // data is queued in the kernel buffer, so write callbacks resolve with
+      // null even when the peer is immediately destroyed, making it
+      // impossible to deterministically trigger a write error followed by a
+      // successful retry via a real Unix socket in unit tests.
     }
     return null;
   }
