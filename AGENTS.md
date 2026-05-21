@@ -21,11 +21,11 @@ CI runs typecheck + vitest + V8 coverage via GitHub Actions.
 | File | Role |
 |------|------|
 | `src/index.ts` | Plugin entry — wires hooks, tools, and service lifecycle |
-| `src/hooks.ts` | `before_tool_call` / `after_tool_call` handlers, receipt creation |
-| `src/chain.ts` | Per-session hash-linked chain state |
+| `src/hooks.ts` | `before_tool_call` / `after_tool_call` handlers — classify and forward to daemon |
+| `src/daemon-store.ts` | Read-only access to the daemon's SQLite receipt database |
 | `src/classify.ts` | Tool name → action type + risk level via taxonomy |
 | `src/tools.ts` | Agent-facing tools: `ar_query_receipts`, `ar_verify_chain` |
-| `src/config.ts` | Config resolution, Ed25519 key management |
+| `src/config.ts` | Config resolution, daemon DB/key path defaults |
 | `taxonomy.json` | Source of truth for tool → action type mappings |
 | `openclaw.plugin.json` | Plugin manifest (config schema, tool contracts) |
 
@@ -62,8 +62,8 @@ CI runs typecheck + vitest + V8 coverage via GitHub Actions.
 ## Security
 
 - Never commit real private keys. Test fixtures use well-known test keys only (see `src/test-helpers.ts`).
-- Parameters are never stored in plaintext by default — only SHA-256 hashes appear in receipts. The `parameterDisclosure` config is an explicit opt-in that stores named fields verbatim; do not enable it implicitly or broaden its scope.
-- The `daemonForwarding` config is also off by default. Enabling it forwards raw `input` and `output` JSON to the agent-receipts daemon over AF_UNIX so the daemon can canonicalise and hash; the daemon does not persist the raw values, but they cross a process trust boundary. Do not enable it implicitly, default it to `true`, or change the hook code path so frames are forwarded without `daemonForwarding` being set.
+- All tool call frames are forwarded to the daemon over AF_UNIX. Raw `input` and `output` JSON cross the socket so the daemon can canonicalise and hash them. The daemon does not persist the raw values, but they are observable in transit. Do not add code paths that forward frames without the daemon's explicit handling.
+- Parameter disclosure (storing plaintext field values in receipts) is controlled by the daemon's `--parameter-disclosure` flag, not by this plugin. The plugin's `parameterDisclosure` config is retained only to emit a migration warning; do not re-implement disclosure logic in the plugin.
 - Ed25519 is the only supported signing algorithm. Do not introduce alternative or weaker schemes.
 - Validate all inputs at trust boundaries (function parameters, environment variables, stored data). Crypto code must reject invalid inputs explicitly, not silently degrade.
 - Report vulnerabilities via [GitHub Security Advisories](https://github.com/agent-receipts/openclaw/security/advisories/new), not public issues. See [SECURITY.md](SECURITY.md).

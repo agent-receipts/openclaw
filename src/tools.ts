@@ -98,7 +98,14 @@ export function createQueryReceiptsToolFactory(deps: ToolDeps) {
           ? params.limit
           : 20;
 
-      const store = openDaemonStore(deps.daemonDbPath);
+      let store;
+      try {
+        store = openDaemonStore(deps.daemonDbPath);
+      } catch {
+        const text = `Cannot open daemon database at ${deps.daemonDbPath}. Is the agent-receipts daemon running?`;
+        const empty = { total_receipts: 0, total_chains: 0, by_risk: [], by_status: [], by_action: [], results: [] };
+        return { content: [{ type: "text" as const, text }], details: empty };
+      }
       try {
         const all = store.query({
           actionType: params.action_type,
@@ -176,12 +183,22 @@ export function createVerifyChainToolFactory(deps: ToolDeps) {
       _toolCallId: string,
       params: { chain_id?: string },
     ) {
-      const store = openDaemonStore(deps.daemonDbPath);
+      let store;
+      try {
+        store = openDaemonStore(deps.daemonDbPath);
+      } catch {
+        const text = `Cannot open daemon database at ${deps.daemonDbPath}. Is the agent-receipts daemon running?`;
+        return {
+          content: [{ type: "text" as const, text }],
+          details: { chain_id: params.chain_id ?? null, valid: false, length: 0, broken_at: null, receipts: [] },
+        };
+      }
       try {
         let chainId = params.chain_id;
         if (!chainId) {
-          // Auto-discover: Phase 1 daemon has one chain; take the first receipt's chain.
-          const first = store.query({ limit: 1 });
+          // Auto-discover: loads all receipts and takes the first chain ID seen.
+          // Reasonable for Phase 1 where the daemon typically has one chain.
+          const first = store.query({});
           if (first.length === 0) {
             const text = "No receipts found in the daemon's database.";
             return {

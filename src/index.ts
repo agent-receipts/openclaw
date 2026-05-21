@@ -176,7 +176,7 @@ export default definePluginEntry({
     // --- Service: close emitter on shutdown ---
 
     api.registerService({
-      id: "ar-receipts",
+      id: "ar-store",
       async start() {},
       async stop() {
         emitter?.close();

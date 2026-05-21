@@ -171,7 +171,7 @@ describe("integration: full plugin lifecycle", () => {
     expect(tools.has("ar_verify_chain")).toBe(true);
 
     expect(services).toHaveLength(1);
-    expect(services[0].id).toBe("ar-receipts");
+    expect(services[0].id).toBe("ar-store");
 
     expect(logs.some((l) => l.includes("plugin registered"))).toBe(true);
   });
