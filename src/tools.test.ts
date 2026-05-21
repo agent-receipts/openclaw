@@ -15,7 +15,6 @@ import {
 } from "@agnt-rcpt/sdk-ts";
 import {
   createQueryReceiptsTool,
-  createQueryReceiptsToolFactory,
   createVerifyChainTool,
   createVerifyChainToolFactory,
 } from "./tools.js";
