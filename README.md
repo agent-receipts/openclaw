@@ -53,7 +53,7 @@ Verifying the chain confirms nothing was tampered with:
 Chain "chain_openclaw_main_sid-42" is valid: 5 receipts, all signatures and hash links verified.
 ```
 
-Every receipt is a signed [W3C Verifiable Credential](https://www.w3.org/TR/vc-data-model-2.0/) — parameters are hashed by default (with optional plaintext disclosure via `parameterDisclosure`), and each receipt is hash-linked to the previous one, forming a tamper-evident chain.
+Every receipt is a signed [W3C Verifiable Credential](https://www.w3.org/TR/vc-data-model-2.0/) — parameters are hashed by default, and each receipt is hash-linked to the previous one, forming a tamper-evident chain.
 
 ---
 
@@ -77,8 +77,8 @@ Today, receipts are stored locally in SQLite — fully under your control. The [
 
 Every time the OpenClaw agent executes a tool, this plugin:
 
-1. **Classifies the action** using the [Agent Receipts taxonomy](https://github.com/agent-receipts/ar/tree/main/spec/tree/main/spec/taxonomy)
-2. **Forwards a signed frame** to the local [agent-receipts daemon](https://github.com/agent-receipts/ar/blob/main/daemon/README.md) over AF_UNIX
+1. **Classifies the action** using the [Agent Receipts taxonomy](https://github.com/agent-receipts/ar/tree/main/spec/taxonomy)
+2. **Forwards an unsigned frame** to the local [agent-receipts daemon](https://github.com/agent-receipts/ar/blob/main/daemon/README.md) over AF_UNIX
 3. The daemon **signs, hash-links, and stores** the receipt in its SQLite database
 
 The agent also gets two introspection tools to query and verify its own audit trail.
@@ -95,7 +95,7 @@ OpenClaw Gateway
                          daemon: sign → chain → store
 ```
 
-> **The daemon is required.** If the daemon is not running, frames are dropped silently (fire-and-forget) and no receipts are recorded. See [Daemon setup](#daemon-setup) below.
+> **The daemon is required.** Frames are forwarded fire-and-forget — if the socket is unreachable, a startup warning is logged and delivery drops silently until the daemon is reachable. No receipts are recorded while the daemon is absent. See [Daemon setup](#daemon-setup) below.
 
 ## Install
 
@@ -145,7 +145,7 @@ npx @agnt-rcpt/openclaw export --chain chain_openclaw_main_sid-42
 npx @agnt-rcpt/openclaw export --chain chain_openclaw_main_sid-42 --format presentation
 ```
 
-> **Note:** `parameterDisclosure` controls what gets stored inside receipts — it does not add fields to `receipts --json` output. To inspect `parameters_disclosure` values, export the full receipt with `export --id` or `export --chain`. See [Parameter disclosure](#parameter-disclosure) for configuration details.
+> **Note:** Parameter disclosure is now controlled by the daemon's `--parameter-disclosure` flag, not by plugin config. To inspect `parameters_disclosure` values on receipts that were recorded with disclosure enabled, export the full receipt with `export --id` or `export --chain`.
 
 Run `npx @agnt-rcpt/openclaw --help` for all options including `--status`, `--limit`, and `--db`.
 
@@ -216,7 +216,7 @@ All settings are optional — the plugin works out of the box with sensible defa
 |:---|:---|:---|
 | `enabled` | `true` | Forward tool calls to the daemon |
 | `daemonDbPath` | _(platform default)_ | Path to the daemon's SQLite receipt database (overrides `AGENTRECEIPTS_DB`) |
-| `daemonPublicKeyPath` | _(platform default)_ | Path to the daemon's Ed25519 public key PEM file, used by `ar_verify_chain` (overrides `AGENTRECEIPTS_KEY`) |
+| `daemonPublicKeyPath` | _(platform default)_ | Path to the daemon's Ed25519 public key PEM file, used by `ar_verify_chain`. Defaults to `${AGENTRECEIPTS_KEY}.pub` when `AGENTRECEIPTS_KEY` is set, otherwise `~/.local/share/agent-receipts/signing.key.pub`. |
 | `taxonomyPath` | _(bundled)_ | Custom tool-to-action-type mapping |
 
 Default paths follow the daemon's own resolution: `AGENTRECEIPTS_DB` env var → `$XDG_DATA_HOME/agent-receipts/receipts.db` → `~/.local/share/agent-receipts/receipts.db`.
@@ -242,7 +242,7 @@ Default paths follow the daemon's own resolution: `AGENTRECEIPTS_DB` env var →
 
 ## Daemon setup
 
-The [agent-receipts daemon](https://agentreceipts.ai/getting-started/daemon-setup/) must be installed and running locally. Frames are forwarded fire-and-forget — if the daemon is absent, frames drop silently and no receipts are recorded.
+The [agent-receipts daemon](https://agentreceipts.ai/getting-started/daemon-setup/) must be installed and running locally. Frames are forwarded fire-and-forget — if the socket is unreachable at startup, a warning is logged. Per-frame delivery failures drop silently; no receipts are recorded while the daemon is absent.
 
 **macOS (Homebrew — recommended):**
 
