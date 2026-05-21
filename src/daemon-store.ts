@@ -15,10 +15,18 @@ import { pathToFileURL } from "node:url";
 import { ReceiptStore } from "@agnt-rcpt/sdk-ts";
 
 /**
+ * Narrow read-only view of a ReceiptStore.
+ * Callers cannot accidentally invoke write methods (insert, migrate, etc.).
+ * The unsafe constructor bypass stays inside openDaemonStore — nothing outside
+ * this module needs to know about it.
+ */
+export type DaemonStoreReader = Pick<ReceiptStore, "query" | "stats" | "close" | "getChain">;
+
+/**
  * Open the daemon's SQLite receipt DB read-only.
  * Caller must call .close() when done.
  */
-export function openDaemonStore(dbPath: string): ReceiptStore {
+export function openDaemonStore(dbPath: string): DaemonStoreReader {
   const uri = `${pathToFileURL(dbPath).href}?mode=ro`;
   const db = new DatabaseSync(uri);
   // Bypass ReceiptStore constructor to skip schema init — the daemon has
