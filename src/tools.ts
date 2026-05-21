@@ -12,7 +12,7 @@
 
 import { readFileSync } from "node:fs";
 import { Type } from "@sinclair/typebox";
-import type { RiskLevel, OutcomeStatus } from "@agnt-rcpt/sdk-ts";
+import type { RiskLevel, OutcomeStatus, ReceiptStore } from "@agnt-rcpt/sdk-ts";
 import { verifyStoredChain } from "@agnt-rcpt/sdk-ts";
 import { openDaemonStore } from "./daemon-store.js";
 
@@ -41,14 +41,13 @@ export function createQueryReceiptsToolFactory(deps: ToolDeps) {
     name: "ar_query_receipts",
     label: "Query Attestation Receipts",
     description:
-      "Search the cryptographic audit trail of actions taken in this session. " +
-      "Returns receipts newest-first, filtered by action type, risk level, status, or time window. " +
-      "Reads directly from the daemon's receipt database. " +
+      "Search the cryptographic audit trail in the daemon's receipt database. " +
+      "Returns receipts newest-first, across all sessions, filtered by action type, risk level, status, or time window. " +
       "To poll for new actions since your last check, pass `timestamp_after` set to the timestamp of " +
       "the most recent receipt you've already seen.",
     parameters: Type.Object({
       action_type: Type.Optional(
-        Type.String({ description: 'Filter by action type (e.g. "openclaw.read_file")' }),
+        Type.String({ description: 'Filter by action type (e.g. "filesystem.file.read")' }),
       ),
       risk_level: Type.Optional(
         Type.String({ description: 'Filter by risk level: "low", "medium", "high", "critical"' }),
@@ -98,13 +97,13 @@ export function createQueryReceiptsToolFactory(deps: ToolDeps) {
           ? params.limit
           : 20;
 
-      let store;
+      let store: ReceiptStore;
       try {
         store = openDaemonStore(deps.daemonDbPath);
       } catch {
-        const text = `Cannot open daemon database at ${deps.daemonDbPath}. Is the agent-receipts daemon running?`;
-        const empty = { total_receipts: 0, total_chains: 0, by_risk: [], by_status: [], by_action: [], results: [] };
-        return { content: [{ type: "text" as const, text }], details: empty };
+        const error = `Cannot open daemon database at ${deps.daemonDbPath}. Is the agent-receipts daemon running?`;
+        const empty = { error, total_receipts: 0, total_chains: 0, by_risk: [], by_status: [], by_action: [], results: [] };
+        return { content: [{ type: "text" as const, text: JSON.stringify(empty, null, 2) }], details: empty };
       }
       try {
         const all = store.query({
@@ -183,14 +182,18 @@ export function createVerifyChainToolFactory(deps: ToolDeps) {
       _toolCallId: string,
       params: { chain_id?: string },
     ) {
-      let store;
+      let store: ReceiptStore;
       try {
         store = openDaemonStore(deps.daemonDbPath);
       } catch {
         const text = `Cannot open daemon database at ${deps.daemonDbPath}. Is the agent-receipts daemon running?`;
+        const details = { error: text, chain_id: params.chain_id ?? null, valid: false, length: 0, broken_at: null, receipts: [] };
         return {
-          content: [{ type: "text" as const, text }],
-          details: { chain_id: params.chain_id ?? null, valid: false, length: 0, broken_at: null, receipts: [] },
+          content: [
+            { type: "text" as const, text },
+            { type: "text" as const, text: JSON.stringify(details, null, 2) },
+          ],
+          details,
         };
       }
       try {

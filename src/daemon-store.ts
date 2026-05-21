@@ -11,6 +11,7 @@
  */
 
 import { DatabaseSync } from "node:sqlite";
+import { pathToFileURL } from "node:url";
 import { ReceiptStore } from "@agnt-rcpt/sdk-ts";
 
 /**
@@ -18,12 +19,7 @@ import { ReceiptStore } from "@agnt-rcpt/sdk-ts";
  * Caller must call .close() when done.
  */
 export function openDaemonStore(dbPath: string): ReceiptStore {
-  const abs = dbPath.startsWith("/") ? dbPath : `${process.cwd()}/${dbPath}`;
-  const encodedPath = abs
-    .split("/")
-    .map((segment) => encodeURIComponent(segment))
-    .join("/");
-  const uri = `file:${encodedPath}?mode=ro`;
+  const uri = `${pathToFileURL(dbPath).href}?mode=ro`;
   const db = new DatabaseSync(uri);
   // Bypass ReceiptStore constructor to skip schema init — the daemon has
   // already initialised the schema and we must not attempt writes on a

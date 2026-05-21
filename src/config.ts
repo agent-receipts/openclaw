@@ -1,3 +1,4 @@
+import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 
 export type ParameterDisclosureConfig =
@@ -59,7 +60,7 @@ export function defaultDaemonDbPath(): string {
   const dataHome =
     xdgDataHome && xdgDataHome !== ""
       ? xdgDataHome
-      : join(process.env["HOME"] ?? "", ".local", "share");
+      : join(homedir(), ".local", "share");
   return join(dataHome, "agent-receipts", "receipts.db");
 }
 
@@ -80,7 +81,7 @@ export function defaultDaemonPublicKeyPath(): string {
   const dataHome =
     xdgDataHome && xdgDataHome !== ""
       ? xdgDataHome
-      : join(process.env["HOME"] ?? "", ".local", "share");
+      : join(homedir(), ".local", "share");
   return join(dataHome, "agent-receipts", "signing.key.pub");
 }
 
