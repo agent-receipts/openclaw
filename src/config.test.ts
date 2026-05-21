@@ -1,37 +1,151 @@
-import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
-import { resolveConfig, loadOrCreateKeys } from "./config.js";
+import { resolveConfig, defaultDaemonDbPath, defaultDaemonPublicKeyPath } from "./config.js";
+
+// ---- defaultDaemonDbPath ----
+
+describe("defaultDaemonDbPath", () => {
+  it("AGENTRECEIPTS_DB overrides all other resolution", () => {
+    const saved = process.env.AGENTRECEIPTS_DB;
+    process.env.AGENTRECEIPTS_DB = "/custom/path/receipts.db";
+    try {
+      expect(defaultDaemonDbPath()).toBe("/custom/path/receipts.db");
+    } finally {
+      if (saved === undefined) delete process.env.AGENTRECEIPTS_DB;
+      else process.env.AGENTRECEIPTS_DB = saved;
+    }
+  });
+
+  it("XDG_DATA_HOME affects the path when AGENTRECEIPTS_DB is unset", () => {
+    const savedDb = process.env.AGENTRECEIPTS_DB;
+    const savedXdg = process.env.XDG_DATA_HOME;
+    delete process.env.AGENTRECEIPTS_DB;
+    process.env.XDG_DATA_HOME = "/custom/data";
+    try {
+      expect(defaultDaemonDbPath()).toBe("/custom/data/agent-receipts/receipts.db");
+    } finally {
+      if (savedDb === undefined) delete process.env.AGENTRECEIPTS_DB;
+      else process.env.AGENTRECEIPTS_DB = savedDb;
+      if (savedXdg === undefined) delete process.env.XDG_DATA_HOME;
+      else process.env.XDG_DATA_HOME = savedXdg;
+    }
+  });
+
+  it("falls back to ~/.local/share/agent-receipts/receipts.db when no env vars set", () => {
+    const savedDb = process.env.AGENTRECEIPTS_DB;
+    const savedXdg = process.env.XDG_DATA_HOME;
+    const savedHome = process.env.HOME;
+    delete process.env.AGENTRECEIPTS_DB;
+    delete process.env.XDG_DATA_HOME;
+    process.env.HOME = "/home/testuser";
+    try {
+      expect(defaultDaemonDbPath()).toBe("/home/testuser/.local/share/agent-receipts/receipts.db");
+    } finally {
+      if (savedDb === undefined) delete process.env.AGENTRECEIPTS_DB;
+      else process.env.AGENTRECEIPTS_DB = savedDb;
+      if (savedXdg === undefined) delete process.env.XDG_DATA_HOME;
+      else process.env.XDG_DATA_HOME = savedXdg;
+      if (savedHome === undefined) delete process.env.HOME;
+      else process.env.HOME = savedHome;
+    }
+  });
+});
+
+// ---- defaultDaemonPublicKeyPath ----
+
+describe("defaultDaemonPublicKeyPath", () => {
+  it("AGENTRECEIPTS_KEY + '.pub' overrides all other resolution", () => {
+    const saved = process.env.AGENTRECEIPTS_KEY;
+    process.env.AGENTRECEIPTS_KEY = "/custom/signing.key";
+    try {
+      expect(defaultDaemonPublicKeyPath()).toBe("/custom/signing.key.pub");
+    } finally {
+      if (saved === undefined) delete process.env.AGENTRECEIPTS_KEY;
+      else process.env.AGENTRECEIPTS_KEY = saved;
+    }
+  });
+
+  it("XDG_DATA_HOME affects the path when AGENTRECEIPTS_KEY is unset", () => {
+    const savedKey = process.env.AGENTRECEIPTS_KEY;
+    const savedXdg = process.env.XDG_DATA_HOME;
+    delete process.env.AGENTRECEIPTS_KEY;
+    process.env.XDG_DATA_HOME = "/custom/data";
+    try {
+      expect(defaultDaemonPublicKeyPath()).toBe("/custom/data/agent-receipts/signing.key.pub");
+    } finally {
+      if (savedKey === undefined) delete process.env.AGENTRECEIPTS_KEY;
+      else process.env.AGENTRECEIPTS_KEY = savedKey;
+      if (savedXdg === undefined) delete process.env.XDG_DATA_HOME;
+      else process.env.XDG_DATA_HOME = savedXdg;
+    }
+  });
+
+  it("falls back to ~/.local/share/agent-receipts/signing.key.pub", () => {
+    const savedKey = process.env.AGENTRECEIPTS_KEY;
+    const savedXdg = process.env.XDG_DATA_HOME;
+    const savedHome = process.env.HOME;
+    delete process.env.AGENTRECEIPTS_KEY;
+    delete process.env.XDG_DATA_HOME;
+    process.env.HOME = "/home/testuser";
+    try {
+      expect(defaultDaemonPublicKeyPath()).toBe("/home/testuser/.local/share/agent-receipts/signing.key.pub");
+    } finally {
+      if (savedKey === undefined) delete process.env.AGENTRECEIPTS_KEY;
+      else process.env.AGENTRECEIPTS_KEY = savedKey;
+      if (savedXdg === undefined) delete process.env.XDG_DATA_HOME;
+      else process.env.XDG_DATA_HOME = savedXdg;
+      if (savedHome === undefined) delete process.env.HOME;
+      else process.env.HOME = savedHome;
+    }
+  });
+});
+
+// ---- resolveConfig ----
 
 describe("resolveConfig", () => {
+  let tempDir = "";
+
+  afterEach(() => {
+    if (tempDir) {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it("returns defaults when no config provided", () => {
     const cfg = resolveConfig();
 
-    expect(cfg.dbPath).toContain(".openclaw/agent-receipts/receipts.db");
-    expect(cfg.keyPath).toContain(".openclaw/agent-receipts/keys.json");
+    expect(cfg.daemonDbPath).toBeTruthy();
+    expect(cfg.daemonDbPath).toContain("agent-receipts");
+    expect(cfg.daemonPublicKeyPath).toBeTruthy();
+    expect(cfg.daemonPublicKeyPath).toContain("signing.key.pub");
     expect(cfg.taxonomyPath).toBeUndefined();
     expect(cfg.enabled).toBe(true);
+    expect(cfg.parameterDisclosure).toBe(false);
   });
 
-  it("respects explicit values", () => {
-    const cfg = resolveConfig({
-      dbPath: "/custom/path/db.sqlite",
-      keyPath: "/custom/keys.json",
-      taxonomyPath: "/custom/taxonomy.json",
-    });
-
-    expect(cfg.dbPath).toBe("/custom/path/db.sqlite");
-    expect(cfg.keyPath).toBe("/custom/keys.json");
-    expect(cfg.taxonomyPath).toBe("/custom/taxonomy.json");
+  it("respects explicit daemonDbPath", () => {
+    const cfg = resolveConfig({ daemonDbPath: "/custom/daemon.db" });
+    expect(cfg.daemonDbPath).toBe("/custom/daemon.db");
   });
 
-  it("expands ~ in paths", () => {
-    const cfg = resolveConfig({ dbPath: "~/my/db.sqlite" });
+  it("respects explicit daemonPublicKeyPath", () => {
+    const cfg = resolveConfig({ daemonPublicKeyPath: "/custom/signing.key.pub" });
+    expect(cfg.daemonPublicKeyPath).toBe("/custom/signing.key.pub");
+  });
 
-    expect(cfg.dbPath).not.toContain("~");
-    expect(cfg.dbPath).toContain("my/db.sqlite");
+  it("expands ~ in daemonDbPath", () => {
+    const cfg = resolveConfig({ daemonDbPath: "~/my/receipts.db" });
+    expect(cfg.daemonDbPath).not.toContain("~");
+    expect(cfg.daemonDbPath).toContain("my/receipts.db");
+  });
+
+  it("expands ~ in daemonPublicKeyPath", () => {
+    const cfg = resolveConfig({ daemonPublicKeyPath: "~/my/signing.key.pub" });
+    expect(cfg.daemonPublicKeyPath).not.toContain("~");
+    expect(cfg.daemonPublicKeyPath).toContain("my/signing.key.pub");
   });
 
   it("treats missing enabled as true", () => {
@@ -44,33 +158,32 @@ describe("resolveConfig", () => {
     expect(cfg.enabled).toBe(false);
   });
 
-  it("daemonForwarding defaults to disabled", () => {
-    expect(resolveConfig().daemonForwarding.enabled).toBe(false);
-    expect(resolveConfig({}).daemonForwarding.enabled).toBe(false);
+  it("taxonomyPath is resolved from config", () => {
+    const cfg = resolveConfig({ taxonomyPath: "/custom/taxonomy.json" });
+    expect(cfg.taxonomyPath).toBe("/custom/taxonomy.json");
   });
 
-  it("daemonForwarding accepts boolean true", () => {
-    const cfg = resolveConfig({ daemonForwarding: true });
-    expect(cfg.daemonForwarding.enabled).toBe(true);
+  it("taxonomyPath is undefined by default", () => {
+    const cfg = resolveConfig();
+    expect(cfg.taxonomyPath).toBeUndefined();
   });
 
-  it("daemonForwarding accepts { enabled: true }", () => {
-    const cfg = resolveConfig({ daemonForwarding: { enabled: true } });
-    expect(cfg.daemonForwarding.enabled).toBe(true);
+  it("parameterDisclosure defaults to false", () => {
+    expect(resolveConfig().parameterDisclosure).toBe(false);
+    expect(resolveConfig({}).parameterDisclosure).toBe(false);
   });
 
-  it("daemonForwarding object form treats missing/false enabled as off", () => {
-    expect(resolveConfig({ daemonForwarding: {} }).daemonForwarding.enabled).toBe(false);
-    expect(
-      resolveConfig({ daemonForwarding: { enabled: false } }).daemonForwarding.enabled,
-    ).toBe(false);
+  it("parameterDisclosure accepts explicit values", () => {
+    expect(resolveConfig({ parameterDisclosure: true }).parameterDisclosure).toBe(true);
+    expect(resolveConfig({ parameterDisclosure: "high" }).parameterDisclosure).toBe("high");
+    expect(resolveConfig({ parameterDisclosure: ["system.command.execute"] }).parameterDisclosure).toEqual(["system.command.execute"]);
   });
 
   it("throws when HOME is unset and path uses ~/", () => {
     const originalHome = process.env.HOME;
     try {
       delete process.env.HOME;
-      expect(() => resolveConfig({ dbPath: "~/test/db.sqlite" })).toThrow("HOME");
+      expect(() => resolveConfig({ daemonDbPath: "~/test/db.sqlite" })).toThrow("HOME");
     } finally {
       if (originalHome === undefined) {
         delete process.env.HOME;
@@ -79,88 +192,17 @@ describe("resolveConfig", () => {
       }
     }
   });
-});
 
-describe("loadOrCreateKeys", () => {
-  let tempDir: string;
-
-  afterEach(() => {
-    if (tempDir) {
-      rmSync(tempDir, { recursive: true, force: true });
+  it("daemonDbPath uses AGENTRECEIPTS_DB env var as default", () => {
+    const saved = process.env.AGENTRECEIPTS_DB;
+    const fakePath = join(tmpdir(), `ar-test-${randomUUID()}`, "receipts.db");
+    process.env.AGENTRECEIPTS_DB = fakePath;
+    try {
+      const cfg = resolveConfig();
+      expect(cfg.daemonDbPath).toBe(fakePath);
+    } finally {
+      if (saved === undefined) delete process.env.AGENTRECEIPTS_DB;
+      else process.env.AGENTRECEIPTS_DB = saved;
     }
-  });
-
-  it("generates and persists keys when file does not exist", () => {
-    tempDir = join(tmpdir(), `ar-test-${randomUUID()}`);
-    const keyPath = join(tempDir, "keys.json");
-
-    const keys = loadOrCreateKeys(keyPath);
-
-    expect(keys.publicKey).toBeDefined();
-    expect(keys.privateKey).toBeDefined();
-    expect(keys.verificationMethod).toBe("did:openclaw:agent#key-1");
-
-    // File was persisted
-    const stored = JSON.parse(readFileSync(keyPath, "utf-8"));
-    expect(stored.publicKey).toBe(keys.publicKey);
-    expect(stored.privateKey).toBe(keys.privateKey);
-  });
-
-  it("loads existing keys from file", () => {
-    tempDir = join(tmpdir(), `ar-test-${randomUUID()}`);
-    mkdirSync(tempDir, { recursive: true });
-    const keyPath = join(tempDir, "keys.json");
-
-    const original = {
-      publicKey: "test-pub",
-      privateKey: "test-priv",
-      verificationMethod: "did:custom:method#key-2",
-    };
-    writeFileSync(keyPath, JSON.stringify(original));
-
-    const keys = loadOrCreateKeys(keyPath);
-
-    expect(keys.publicKey).toBe("test-pub");
-    expect(keys.privateKey).toBe("test-priv");
-    expect(keys.verificationMethod).toBe("did:custom:method#key-2");
-  });
-
-  it("adds default verificationMethod if missing from stored file", () => {
-    tempDir = join(tmpdir(), `ar-test-${randomUUID()}`);
-    mkdirSync(tempDir, { recursive: true });
-    const keyPath = join(tempDir, "keys.json");
-
-    writeFileSync(keyPath, JSON.stringify({ publicKey: "pub", privateKey: "priv" }));
-
-    const keys = loadOrCreateKeys(keyPath);
-
-    expect(keys.verificationMethod).toBe("did:openclaw:agent#key-1");
-  });
-
-  it("writes key file with restrictive permissions (owner-only)", () => {
-    tempDir = join(tmpdir(), `ar-test-${randomUUID()}`);
-    const keyPath = join(tempDir, "keys.json");
-
-    loadOrCreateKeys(keyPath);
-
-    const stats = statSync(keyPath);
-    const mode = stats.mode & 0o777;
-    expect(mode).toBe(0o600);
-  });
-
-  it("tightens permissions on existing key files with insecure mode", () => {
-    tempDir = join(tmpdir(), `ar-test-${randomUUID()}`);
-    mkdirSync(tempDir, { recursive: true });
-    const keyPath = join(tempDir, "keys.json");
-
-    // Simulate an old key file with world-readable permissions
-    writeFileSync(keyPath, JSON.stringify({ publicKey: "pub", privateKey: "priv" }), { mode: 0o644 });
-    expect(statSync(keyPath).mode & 0o777).toBe(0o644);
-
-    loadOrCreateKeys(keyPath);
-
-    // Should have been tightened to 0o600
-    const mode = statSync(keyPath).mode & 0o777;
-    expect(mode).toBe(0o600);
   });
 });

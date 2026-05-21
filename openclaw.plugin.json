@@ -9,13 +9,13 @@
     "type": "object",
     "additionalProperties": false,
     "properties": {
-      "dbPath": {
+      "daemonDbPath": {
         "type": "string",
-        "description": "Path to SQLite receipt database"
+        "description": "Path to the agent-receipts daemon's SQLite receipt database. Defaults to the daemon's platform default (AGENTRECEIPTS_DB env var or ~/.local/share/agent-receipts/receipts.db)."
       },
-      "keyPath": {
+      "daemonPublicKeyPath": {
         "type": "string",
-        "description": "Path to Ed25519 key pair JSON file"
+        "description": "Path to the agent-receipts daemon's Ed25519 public key (PEM). Used by ar_verify_chain to verify receipt signatures. Defaults to the daemon's platform default (AGENTRECEIPTS_KEY env var + .pub, or ~/.local/share/agent-receipts/signing.key.pub)."
       },
       "taxonomyPath": {
         "type": "string",
@@ -31,7 +31,15 @@
           { "type": "string", "enum": ["high"] },
           { "type": "array", "items": { "type": "string" } }
         ],
-        "description": "Selectively disclose action parameters in receipts. Disclosed values are signed and durable — never include secrets."
+        "description": "Deprecated under daemon mode — parameter disclosure is now controlled by the daemon's --parameter-disclosure flag. Setting this emits a startup warning and has no effect."
+      },
+      "dbPath": {
+        "type": "string",
+        "description": "Deprecated (Flavor A). Ignored in daemon mode — use daemonDbPath instead."
+      },
+      "keyPath": {
+        "type": "string",
+        "description": "Deprecated (Flavor A). Ignored in daemon mode — use daemonPublicKeyPath instead."
       },
       "daemonForwarding": {
         "oneOf": [
@@ -44,20 +52,19 @@
             }
           }
         ],
-        "default": false,
-        "description": "Forward every tool call to a local agent-receipts daemon over AF_UNIX (ADR-0010). Off by default — enabling sends raw input/output JSON across a process boundary so the daemon can canonicalise and hash. The daemon does not persist raw values."
+        "description": "Deprecated (Flavor A). Ignored — forwarding is always enabled in daemon mode."
       }
     }
   },
   "uiHints": {
-    "dbPath": {
-      "label": "Database Path",
-      "placeholder": "~/.openclaw/agent-receipts/receipts.db",
+    "daemonDbPath": {
+      "label": "Daemon Database Path",
+      "placeholder": "~/.local/share/agent-receipts/receipts.db",
       "advanced": true
     },
-    "keyPath": {
-      "label": "Key Path",
-      "placeholder": "~/.openclaw/agent-receipts/keys.json",
+    "daemonPublicKeyPath": {
+      "label": "Daemon Public Key Path",
+      "placeholder": "~/.local/share/agent-receipts/signing.key.pub",
       "advanced": true
     },
     "taxonomyPath": {
@@ -67,15 +74,11 @@
     },
     "enabled": {
       "label": "Enable Attestations",
-      "help": "Generate signed receipts for every tool call"
+      "help": "Forward tool calls to the agent-receipts daemon for signing and storage"
     },
     "parameterDisclosure": {
-      "label": "Parameter Disclosure",
-      "help": "Disclose specific action parameters in receipts. false = hashes only (default), true = all, \"high\" = high-risk only, or an array of action type strings. Disclosed values are signed and permanent — do not list fields that may contain secrets."
-    },
-    "daemonForwarding": {
-      "label": "Daemon Forwarding",
-      "help": "Forward each tool call to a local agent-receipts daemon over AF_UNIX. Off by default. Enabling sends raw input/output across a process boundary so the daemon can canonicalise and hash; the daemon does not persist raw values.",
+      "label": "Parameter Disclosure (deprecated)",
+      "help": "No effect in daemon mode. Use --parameter-disclosure on the daemon instead.",
       "advanced": true
     }
   }
