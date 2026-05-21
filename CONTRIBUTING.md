@@ -67,6 +67,14 @@ lefthook install
 
 See the [convco installation docs](https://convco.github.io/check/installation/) for all options.
 
+## Changelog
+
+User-visible changes (features, fixes, breaking changes, deprecations) belong in [`CHANGELOG.md`](CHANGELOG.md). Add an entry under the `## [Unreleased]` heading as part of your PR, using the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) section conventions (`Added`, `Changed`, `Changed (breaking)`, `Deprecated`, `Removed`, `Fixed`, `Security`). Link the issue or PR number when there is one.
+
+Internal-only changes (refactors with no observable behavior change, CI tweaks, test-only edits) do not need a changelog entry.
+
+The release script promotes `## [Unreleased]` to a versioned heading and rewrites the reference links at the bottom of the file, so contributors only need to add the entry — versioning is automatic.
+
 ## Taxonomy Contributions
 
 Adding mappings for new OpenClaw tools is a great way to contribute. Edit `taxonomy.json` and add corresponding tests in `src/classify.test.ts`.
@@ -126,6 +134,7 @@ Before opening a PR, verify:
 - [ ] No real keys or secrets in the diff — use test fixtures only
 - [ ] Taxonomy changes include corresponding tests in `src/classify.test.ts`
 - [ ] AGENTS.md updated if you changed project structure
+- [ ] `CHANGELOG.md` updated under `## [Unreleased]` for user-visible changes
 - [ ] Commit message follows [Conventional Commits](https://www.conventionalcommits.org/) format
 
 ## License

@@ -29,7 +29,8 @@
   "files": [
     "dist",
     "taxonomy.json",
-    "openclaw.plugin.json"
+    "openclaw.plugin.json",
+    "CHANGELOG.md"
   ],
   "engines": {
     "node": ">=22.11.0"
