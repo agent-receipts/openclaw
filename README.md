@@ -53,7 +53,7 @@ Verifying the chain confirms nothing was tampered with:
 Chain "chain_openclaw_main_sid-42" is valid: 5 receipts, all signatures and hash links verified.
 ```
 
-Every receipt is a signed [W3C Verifiable Credential](https://www.w3.org/TR/vc-data-model-2.0/) — parameters are hashed by default (with optional plaintext disclosure via `parameterDisclosure`), and each receipt is hash-linked to the previous one, forming a tamper-evident chain.
+Every receipt is a signed [W3C Verifiable Credential](https://www.w3.org/TR/vc-data-model-2.0/) — parameters are hashed by default, and each receipt is hash-linked to the previous one, forming a tamper-evident chain.
 
 ---
 
@@ -77,22 +77,25 @@ Today, receipts are stored locally in SQLite — fully under your control. The [
 
 Every time the OpenClaw agent executes a tool, this plugin:
 
-1. **Classifies the action** using the [Agent Receipts taxonomy](https://github.com/agent-receipts/ar/tree/main/spec/tree/main/spec/taxonomy)
-2. **Creates a signed receipt** — a [W3C Verifiable Credential](https://www.w3.org/TR/vc-data-model-2.0/) with Ed25519 proof
-3. **Hash-links it** into a per-session chain (tamper-evident)
-4. **Stores it** in a local SQLite database
+1. **Classifies the action** using the [Agent Receipts taxonomy](https://github.com/agent-receipts/ar/tree/main/spec/taxonomy)
+2. **Forwards an unsigned frame** to the local [agent-receipts daemon](https://github.com/agent-receipts/ar/blob/main/daemon/README.md) over AF_UNIX
+3. The daemon **signs, hash-links, and stores** the receipt in its SQLite database
 
 The agent also gets two introspection tools to query and verify its own audit trail.
 
 ```
 OpenClaw Gateway
   │
-  ├─ before_tool_call ──► capture params + timing
+  ├─ before_tool_call ──► classify → forward "pending" frame to daemon
   │
   ├─ [tool executes]
   │
-  └─ after_tool_call ──► classify → sign → chain → store
+  └─ after_tool_call ──► forward "allowed" frame to daemon
+                              │
+                         daemon: sign → chain → store
 ```
+
+> **The daemon is required.** Frames are forwarded fire-and-forget — if the socket is unreachable, a startup warning is logged and delivery drops silently until the daemon is reachable. No receipts are recorded while the daemon is absent. See [Daemon setup](#daemon-setup) below.
 
 ## Install
 
@@ -142,7 +145,7 @@ npx @agnt-rcpt/openclaw export --chain chain_openclaw_main_sid-42
 npx @agnt-rcpt/openclaw export --chain chain_openclaw_main_sid-42 --format presentation
 ```
 
-> **Note:** `parameterDisclosure` controls what gets stored inside receipts — it does not add fields to `receipts --json` output. To inspect `parameters_disclosure` values, export the full receipt with `export --id` or `export --chain`. See [Parameter disclosure](#parameter-disclosure) for configuration details.
+> **Note:** Parameter disclosure is now controlled by the daemon's `--parameter-disclosure` flag, not by plugin config. To inspect `parameters_disclosure` values on receipts that were recorded with disclosure enabled, export the full receipt with `export --id` or `export --chain`.
 
 Run `npx @agnt-rcpt/openclaw --help` for all options including `--status`, `--limit`, and `--db`.
 
@@ -166,10 +169,10 @@ Search the audit trail by action type, risk level, or outcome status. Returns re
 
 ### `ar_verify_chain`
 
-Cryptographically verify the integrity of the receipt chain. Checks Ed25519 signatures, hash links, and sequence numbering.
+Cryptographically verify the integrity of the daemon's receipt chain. Checks Ed25519 signatures, hash links, and sequence numbering.
 
 ```
-> Verify the audit trail for this session
+> Verify the audit trail
 
 Chain "chain_openclaw_main_sid-42" is valid: 12 receipts, all signatures and hash links verified.
 ```
@@ -180,7 +183,7 @@ Each receipt is a W3C Verifiable Credential signed with Ed25519, recording:
 
 | Field | What it captures |
 |:---|:---|
-| **Issuer** | Which agent performed the action (`did:openclaw:<agentId>`) |
+| **Issuer** | The agent-receipts daemon's identity (set by the daemon at signing time) |
 | **Principal** | Which session authorized it (`did:session:<sessionKey>`) |
 | **Action** | What happened — classified type, risk level, target tool |
 | **Outcome** | Success/failure status and error details |
@@ -207,18 +210,16 @@ See [`taxonomy.json`](taxonomy.json) for the full 20-tool mapping. Override with
 
 ## Configuration
 
-All settings are optional — the plugin works out of the box with sensible defaults.
+All settings are optional — the plugin works out of the box with sensible defaults, assuming the daemon is installed at its default paths.
 
 | Setting | Default | Description |
 |:---|:---|:---|
-| `enabled` | `true` | Generate receipts for tool calls |
-| `dbPath` | `~/.openclaw/agent-receipts/receipts.db` | SQLite receipt database path |
-| `keyPath` | `~/.openclaw/agent-receipts/keys.json` | Ed25519 signing key pair path |
+| `enabled` | `true` | Forward tool calls to the daemon |
+| `daemonDbPath` | _(platform default)_ | Path to the daemon's SQLite receipt database (overrides `AGENTRECEIPTS_DB`) |
+| `daemonPublicKeyPath` | _(platform default)_ | Path to the daemon's Ed25519 public key PEM file, used by `ar_verify_chain`. Defaults to `${AGENTRECEIPTS_KEY}.pub` when `AGENTRECEIPTS_KEY` is set, otherwise `~/.local/share/agent-receipts/signing.key.pub`. |
 | `taxonomyPath` | _(bundled)_ | Custom tool-to-action-type mapping |
-| `parameterDisclosure` | `false` | Selectively disclose parameters in plaintext (see below) |
-| `daemonForwarding` | `false` | Forward each tool call to a local agent-receipts daemon over AF_UNIX (see [Daemon forwarding](#daemon-forwarding)) |
 
-Default config block:
+Default paths follow the daemon's own resolution: `AGENTRECEIPTS_DB` env var → `$XDG_DATA_HOME/agent-receipts/receipts.db` → `~/.local/share/agent-receipts/receipts.db`.
 
 ```jsonc
 {
@@ -227,11 +228,9 @@ Default config block:
       "openclaw-agent-receipts": {
         "config": {
           "enabled": true,
-          "dbPath": "~/.openclaw/agent-receipts/receipts.db",
-          "keyPath": "~/.openclaw/agent-receipts/keys.json",
-          // "taxonomyPath": "/path/to/custom-taxonomy.json",  // optional — overrides bundled taxonomy
-          "parameterDisclosure": false,  // false | true | "high" | string[]
-          "daemonForwarding": false       // boolean | { enabled: boolean }
+          // "taxonomyPath": "/path/to/custom-taxonomy.json",  // optional
+          // "daemonDbPath": "/custom/path/receipts.db",       // optional; defaults to daemon's path
+          // "daemonPublicKeyPath": "/custom/signing.key.pub"  // optional; defaults to daemon's path
         }
       }
     }
@@ -239,74 +238,11 @@ Default config block:
 }
 ```
 
-Ed25519 signing keys are generated automatically on first run and persisted to `keyPath`.
+> **Parameter disclosure** is now controlled by the daemon's `--parameter-disclosure` flag, not by this plugin. The `parameterDisclosure` plugin config is accepted for backwards compatibility but is ignored — setting it emits a startup warning.
 
-### Parameter disclosure
+## Daemon setup
 
-By default, action parameters are hashed but not stored in plaintext. Enable `parameterDisclosure` to selectively disclose specific fields per action type — useful for auditing high-risk commands without exposing sensitive data on lower-risk calls.
-
-```jsonc
-{
-  "plugins": {
-    "entries": {
-      "openclaw-agent-receipts": {
-        "config": {
-          "parameterDisclosure": "high"
-        }
-      }
-    }
-  }
-}
-```
-
-Options:
-
-| Value | Behavior |
-|:---|:---|
-| `false` | Hashes only — no plaintext (default) |
-| `true` | Disclosure enabled for all action types |
-| `"high"` | Disclosure enabled for `high` and `critical` risk actions only |
-| `["system.command.execute"]` | Disclosure enabled for specific action types |
-
-With `"high"` enabled, a `system.command.execute` receipt includes:
-
-```jsonc
-{
-  // ...other receipt fields
-  "parameters_hash": "sha256:9c84a8c9...",
-  "parameters_disclosure": {
-    "command": "echo \"Testing agent-receipts plugin fix\""
-  }
-}
-```
-
-The hash always covers the full original parameters regardless of disclosure config. Only the **first** matching field from the taxonomy's `disclosure_fields` list is included in `parameters_disclosure`, and non-string values are JSON-stringified. Disclosed values are signed and durable — do not list fields that may contain secrets.
-
-### Daemon forwarding
-
-Off by default. When enabled, each tool call is also forwarded to a local [agent-receipts daemon](https://github.com/agent-receipts/ar/blob/main/daemon/README.md) over AF_UNIX (ADR-0010), in addition to the in-process receipt path. The daemon canonicalises and signs frames out-of-process so plugins do not need to hold key material.
-
-```jsonc
-{
-  "plugins": {
-    "entries": {
-      "openclaw-agent-receipts": {
-        "config": {
-          "daemonForwarding": true   // or { "enabled": true }
-        }
-      }
-    }
-  }
-}
-```
-
-> **Trust boundary:** enabling daemon forwarding sends raw `input` and `output` JSON across a process boundary so the daemon can canonicalise (RFC 8785) and SHA-256 hash the call. The daemon does not persist the raw values — only their hashes appear in stored receipts — but the bytes are observable on the socket and in daemon memory while the frame is in flight. This is a stricter trust boundary than the in-process `parameterDisclosure` contract, which is why it is opt-in.
->
-> Forwarding is fire-and-forget: a missing or unreachable daemon never blocks the plugin or affects in-process receipt creation. The socket path resolves from `AGENTRECEIPTS_SOCKET`, then `$TMPDIR/agentreceipts/events.sock` on macOS, or `$XDG_RUNTIME_DIR/agentreceipts/events.sock` on Linux.
-
-#### Setting up the daemon
-
-`daemonForwarding` requires the [agent-receipts daemon](https://agentreceipts.ai/getting-started/daemon-setup/) to be installed and running locally. If the daemon is absent or stopped, forwarding is silently skipped and in-process receipts are unaffected.
+The [agent-receipts daemon](https://agentreceipts.ai/getting-started/daemon-setup/) must be installed and running locally. Frames are forwarded fire-and-forget — if the socket is unreachable at startup, a warning is logged. Per-frame delivery failures drop silently; no receipts are recorded while the daemon is absent.
 
 **macOS (Homebrew — recommended):**
 
@@ -337,20 +273,32 @@ Environment=XDG_RUNTIME_DIR=/run/user/1001   # replace 1001 with: id -u openclaw
 
 Restart the gateway after saving.
 
-Full daemon documentation and the migration guide are at [agentreceipts.ai/getting-started/daemon-setup/](https://agentreceipts.ai/getting-started/daemon-setup/).
+Full daemon documentation is at [agentreceipts.ai/getting-started/daemon-setup/](https://agentreceipts.ai/getting-started/daemon-setup/).
+
+## Upgrading from ≤ 0.8.0 (Flavor A → Flavor B)
+
+Starting with the next release, the plugin **requires** the daemon. It no longer holds keys, chain state, or a local SQLite store. If you were on Flavor A (in-process receipts):
+
+**1. Install and start the daemon** (if you haven't already) — see [Daemon setup](#daemon-setup) above.
+
+**2. Old receipts are not migrated.** Receipts recorded by Flavor A live at `~/.openclaw/agent-receipts/receipts.db`. No automatic import tooling exists — ADR-0010 specifies a clean break: the daemon starts a fresh chain at sequence 1. Keep the old database offline if you need to verify historical chains.
+
+**3. Issuer DID changes.** Historical Flavor A chains were issued under `did:openclaw:<agentId>`. New chains are issued by the daemon using its own identity. Verifiers of historical chains will see a different issuer from that point forward — this is expected and documented.
+
+**4. Config keys.** The `dbPath`, `keyPath`, and `daemonForwarding` config fields are now deprecated and ignored. If your daemon uses non-default paths, set `daemonDbPath` and `daemonPublicKeyPath` instead.
 
 ## Project structure
 
 ```
 src/
-  index.ts          # Plugin entry — wires hooks, tools, service
-  cli.ts            # Receipt Explorer CLI (npx @agnt-rcpt/openclaw)
-  hooks.ts          # before_tool_call / after_tool_call → receipt creation
-  classify.ts       # Tool name → action type + risk level classification
-  chain.ts          # Per-session hash-linked chain state
-  tools.ts          # ar_query_receipts + ar_verify_chain
-  config.ts         # Config resolution + Ed25519 key management
-taxonomy.json       # Default OpenClaw tool → action type mappings
+  index.ts           # Plugin entry — wires hooks, tools, service
+  cli.ts             # Receipt Explorer CLI (npx @agnt-rcpt/openclaw)
+  hooks.ts           # before_tool_call / after_tool_call → classify + forward to daemon
+  classify.ts        # Tool name → action type + risk level classification
+  daemon-store.ts    # Read-only access to the daemon's SQLite receipt database
+  tools.ts           # ar_query_receipts + ar_verify_chain
+  config.ts          # Config resolution + daemon path defaults
+taxonomy.json        # Default OpenClaw tool → action type mappings
 ```
 
 ## Development
