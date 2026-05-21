@@ -105,6 +105,9 @@ export function createQueryReceiptsToolFactory(deps: ToolDeps) {
         return { content: [{ type: "text" as const, text: JSON.stringify(empty, null, 2) }], details: empty };
       }
       try {
+        // TODO(ar#471): push ORDER BY timestamp DESC, sequence DESC LIMIT ? into SQLite
+        // once openStoreReadOnly() in @agnt-rcpt/sdk-ts >=0.9.0 exposes a richer query API.
+        // Currently loads all matching rows and sorts/slices in JS.
         const all = store.query({
           actionType: params.action_type,
           riskLevel,
@@ -198,8 +201,8 @@ export function createVerifyChainToolFactory(deps: ToolDeps) {
       try {
         let chainId = params.chain_id;
         if (!chainId) {
-          // Auto-discover: loads all receipts and takes the first chain ID seen.
-          // Reasonable for Phase 1 where the daemon typically has one chain.
+          // TODO(ar#471): replace with a bounded single-row query once openStoreReadOnly()
+          // exposes ORDER BY / LIMIT support. Currently loads all receipts to find a chain ID.
           const first = store.query({});
           if (first.length === 0) {
             const text = "No receipts found in the daemon's database.";
