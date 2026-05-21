@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- **Daemon is now required (ADR-0010 Flavor B).** The plugin no longer holds keys, chain state, or a local SQLite store. Every tool call is forwarded to the local agent-receipts daemon over AF_UNIX; the daemon signs, hash-links, and stores receipts. If the daemon is absent, frames drop silently and no receipts are recorded.
+- **Config surface changed.** `dbPath`, `keyPath`, and `daemonForwarding` are deprecated and ignored. New optional fields: `daemonDbPath` and `daemonPublicKeyPath` override the daemon's default SQLite and public-key paths.
+- **`ar_query_receipts` queries the daemon DB** (all sessions, no chain-scope filter). The `chain_id` and `all_chains` parameters have been removed. Results include receipts across all sessions.
+- **`ar_verify_chain` reads the daemon DB and public key from disk.** Chain auto-discovery picks the first chain found; pass `chain_id` explicitly in multi-chain stores.
+- **Issuer DID.** Historical Flavor A chains were signed by the plugin under `did:openclaw:<agentId>`. New chains are signed by the daemon using its own identity. The discontinuity is expected; see the upgrade guide in the README.
+- **`parameterDisclosure` plugin config is now a no-op** and emits a startup warning. Use the daemon's `--parameter-disclosure` flag instead.
+
+### Removed
+
+- `src/chain.ts` — chain state (sequence, previous hash, chain ID) is now managed by the daemon.
+- `loadOrCreateKeys` — the plugin no longer generates or holds Ed25519 keys.
+- Local `store.insert` path — receipts are never written by the plugin process.
+
+### Added
+
+- `src/daemon-store.ts` — opens the daemon's SQLite receipt database read-only via `DatabaseSync` URI mode.
+- `DaemonStoreReader` type — narrow interface (`query`, `stats`, `close`, `getChain`) limits callers to read-only operations.
+- `verifyDaemonChain` helper — centralises the one unsafe cast needed to bridge `DaemonStoreReader` with `verifyStoredChain`.
+- Startup warning when the daemon socket is unreachable, with install instructions.
+- Emit errors from the daemon emitter are now logged (previously silently dropped).
+
 ## [0.8.0] - 2026-05-15
 
 ### Fixed
