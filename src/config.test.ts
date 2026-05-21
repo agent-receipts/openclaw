@@ -195,7 +195,7 @@ describe("resolveConfig", () => {
 
   it("daemonDbPath uses AGENTRECEIPTS_DB env var as default", () => {
     const saved = process.env.AGENTRECEIPTS_DB;
-    const fakePath = join(tmpdir(), `ar-test-${randomUUID()}`, "receipts.db`");
+    const fakePath = join(tmpdir(), `ar-test-${randomUUID()}`, "receipts.db");
     process.env.AGENTRECEIPTS_DB = fakePath;
     try {
       const cfg = resolveConfig();

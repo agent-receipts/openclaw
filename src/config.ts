@@ -69,7 +69,8 @@ export function defaultDaemonDbPath(): string {
  *
  * Resolution order:
  * 1. AGENTRECEIPTS_KEY environment variable + ".pub" suffix
- * 2. ~/.local/share/agent-receipts/signing.key.pub (fallback)
+ * 2. $XDG_DATA_HOME/agent-receipts/signing.key.pub (Linux/macOS)
+ * 3. ~/.local/share/agent-receipts/signing.key.pub (fallback)
  */
 export function defaultDaemonPublicKeyPath(): string {
   const envKey = process.env["AGENTRECEIPTS_KEY"];
