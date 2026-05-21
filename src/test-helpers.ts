@@ -2,15 +2,8 @@
  * Shared test utilities for openclaw-agent-receipts tests.
  */
 
-import {
-  generateKeyPair,
-  openStore,
-  type ReceiptStore,
-} from "@agnt-rcpt/sdk-ts";
 import { beforeToolCall, afterToolCall, type EmitterLike, type HookDeps, type PendingMap } from "./hooks.js";
-import { type ChainsMap, type ChainState } from "./chain.js";
 import { DEFAULT_MAPPINGS, DEFAULT_PATTERNS } from "./classify.js";
-import type { ParameterDisclosureConfig } from "./config.js";
 import type { EmitEvent } from "./emitter.js";
 
 /**
@@ -39,39 +32,26 @@ export class FakeEmitter implements EmitterLike {
 }
 
 /**
- * Create HookDeps with generated keys, in-memory store, and isolated state.
- * Each call creates fresh chains/pending — no shared module state.
+ * Create HookDeps with a FakeEmitter and isolated state.
+ * Each call creates fresh pending — no shared module state.
  * Mappings use the shared immutable DEFAULT_MAPPINGS.
+ *
+ * Pass `overrides.emitter` to inject a custom emitter (e.g. one with
+ * `emitImpl` wired for failure scenarios). Access the default FakeEmitter
+ * via `deps.emitter as FakeEmitter` when no override is given.
  */
-export function makeHookDeps(
-  store?: ReceiptStore,
-  overrides?: {
-    parameterDisclosure?: ParameterDisclosureConfig;
-    emitter?: EmitterLike;
-  },
-): HookDeps & {
-  publicKey: string;
-  store: ReceiptStore;
-} {
-  const keys = generateKeyPair();
-  const s = store ?? openStore(":memory:");
-  const chains: ChainsMap = new Map<string, ChainState>();
+export function makeHookDeps(overrides?: { emitter?: EmitterLike }): HookDeps {
   const pending: PendingMap = new Map();
   return {
-    store: s,
-    privateKey: keys.privateKey,
-    publicKey: keys.publicKey,
-    verificationMethod: "did:openclaw:test-agent#key-1",
     agentId: "test-agent",
     logger: {
       info: () => {},
       warn: () => {},
     },
-    chains,
     pending,
     mappings: DEFAULT_MAPPINGS,
     patterns: DEFAULT_PATTERNS,
-    ...overrides,
+    emitter: overrides?.emitter ?? new FakeEmitter(),
   };
 }
 
@@ -88,6 +68,7 @@ export async function simulateToolCall(
     sessionKey?: string;
     sessionId?: string;
     error?: string;
+    result?: unknown;
   },
 ): Promise<void> {
   const runId = opts?.runId ?? "run-1";
@@ -109,7 +90,7 @@ export async function simulateToolCall(
       params,
       runId,
       toolCallId,
-      result: opts?.error ? undefined : { ok: true },
+      result: opts?.error ? undefined : (opts?.result ?? { ok: true }),
       error: opts?.error,
     },
     { agentId: deps.agentId, ...ctx },

@@ -1,31 +1,94 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { openStore, type ReceiptStore, createReceipt, signReceipt, hashReceipt } from "@agnt-rcpt/sdk-ts";
-import { createQueryReceiptsTool, createQueryReceiptsToolFactory, createVerifyChainTool, createVerifyChainToolFactory } from "./tools.js";
-import { makeHookDeps, simulateToolCall } from "./test-helpers.js";
-import { getChainId } from "./chain.js";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { randomUUID } from "node:crypto";
+import {
+  openStore,
+  generateKeyPair,
+  createReceipt,
+  signReceipt,
+  hashReceipt,
+  type ReceiptStore,
+  type RiskLevel,
+  type OutcomeStatus,
+} from "@agnt-rcpt/sdk-ts";
+import {
+  createQueryReceiptsTool,
+  createQueryReceiptsToolFactory,
+  createVerifyChainTool,
+  createVerifyChainToolFactory,
+} from "./tools.js";
+
+// ---- Test fixture helpers ----
+
+/**
+ * Insert a signed receipt directly into the store.
+ * Receipts inserted this way are NOT hash-linked by default; use the returned
+ * hash as `previousHash` on the next call to build a proper linked chain.
+ */
+function insertReceiptAt(
+  store: ReceiptStore,
+  privateKey: string,
+  opts: {
+    seq: number;
+    chainId: string;
+    timestamp: string;
+    previousHash: string | null;
+    actionType?: string;
+    riskLevel?: RiskLevel;
+    status?: OutcomeStatus;
+  },
+): string {
+  const unsigned = createReceipt({
+    issuer: { id: "did:openclaw:test-agent" },
+    principal: { id: "did:session:test-session" },
+    action: {
+      type: opts.actionType ?? "filesystem.file.read",
+      risk_level: opts.riskLevel ?? "low",
+      target: { system: "openclaw", resource: "read_file" },
+      parameters_hash: "abc123",
+    },
+    outcome: {
+      status: opts.status ?? "success",
+      ...(opts.status === "failure" ? { error: "test error" } : {}),
+    },
+    chain: {
+      sequence: opts.seq,
+      previous_receipt_hash: opts.previousHash,
+      chain_id: opts.chainId,
+    },
+    actionTimestamp: opts.timestamp,
+  });
+  const signed = signReceipt(unsigned, privateKey, "did:openclaw:test-agent#key-1");
+  const h = hashReceipt(signed);
+  store.insert(signed, h);
+  return h;
+}
+
+// ---- ar_query_receipts ----
 
 describe("ar_query_receipts", () => {
-  let store: ReceiptStore;
-  let deps: ReturnType<typeof makeHookDeps>;
-  let tool: ReturnType<typeof createQueryReceiptsTool>;
+  let tempDir: string;
+  let dbPath: string;
+  let keys: ReturnType<typeof generateKeyPair>;
+  let writableStore: ReceiptStore;
 
   beforeEach(() => {
-    store = openStore(":memory:");
-    deps = makeHookDeps(store);
-    // Use session context matching simulateToolCall defaults so the session-default
-    // chain filter resolves to the same chain where receipts are written.
-    tool = createQueryReceiptsToolFactory({
-      store,
-      publicKey: deps.publicKey,
-      getChainId: (sk, sid) => getChainId(deps.chains, sk, sid),
-    })({ sessionKey: "test-session", sessionId: "sid-1" });
+    tempDir = join(tmpdir(), `ar-test-${randomUUID()}`);
+    mkdirSync(tempDir, { recursive: true });
+    dbPath = join(tempDir, "receipts.db");
+    keys = generateKeyPair();
+    writableStore = openStore(dbPath);
   });
 
   afterEach(() => {
-    store.close();
+    writableStore.close();
+    rmSync(tempDir, { recursive: true, force: true });
   });
 
   it("returns empty results on fresh store", async () => {
+    const tool = createQueryReceiptsTool({ daemonDbPath: dbPath, daemonPublicKeyPath: "" });
     const result = await tool.execute("tc-1", {});
     const data = JSON.parse(result.content[0].text);
 
@@ -33,10 +96,11 @@ describe("ar_query_receipts", () => {
     expect(data.results).toHaveLength(0);
   });
 
-  it("returns receipts after hooks create them", async () => {
-    await simulateToolCall(deps, "read_file", { path: "/a.txt" }, { toolCallId: "tc-1" });
-    await simulateToolCall(deps, "write_file", { path: "/b.txt" }, { toolCallId: "tc-2" });
+  it("returns inserted receipts", async () => {
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 1, chainId: "chain-1", timestamp: "2024-01-01T10:00:00.000Z", previousHash: null });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 2, chainId: "chain-1", timestamp: "2024-01-01T11:00:00.000Z", previousHash: "h1" });
 
+    const tool = createQueryReceiptsTool({ daemonDbPath: dbPath, daemonPublicKeyPath: "" });
     const result = await tool.execute("tc-q", {});
     const data = JSON.parse(result.content[0].text);
 
@@ -45,9 +109,10 @@ describe("ar_query_receipts", () => {
   });
 
   it("filters by action_type", async () => {
-    await simulateToolCall(deps, "read_file", { path: "/a.txt" }, { toolCallId: "tc-1" });
-    await simulateToolCall(deps, "run_command", { cmd: "ls" }, { toolCallId: "tc-2" });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 1, chainId: "chain-1", timestamp: "2024-01-01T10:00:00.000Z", previousHash: null, actionType: "filesystem.file.read" });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 2, chainId: "chain-1", timestamp: "2024-01-01T11:00:00.000Z", previousHash: "h1", actionType: "system.command.execute" });
 
+    const tool = createQueryReceiptsTool({ daemonDbPath: dbPath, daemonPublicKeyPath: "" });
     const result = await tool.execute("tc-q", { action_type: "filesystem.file.read" });
     const data = JSON.parse(result.content[0].text);
 
@@ -56,9 +121,10 @@ describe("ar_query_receipts", () => {
   });
 
   it("filters by risk_level", async () => {
-    await simulateToolCall(deps, "read_file", { path: "/a.txt" }, { toolCallId: "tc-1" });
-    await simulateToolCall(deps, "delete_file", { path: "/b.txt" }, { toolCallId: "tc-2" });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 1, chainId: "chain-1", timestamp: "2024-01-01T10:00:00.000Z", previousHash: null, riskLevel: "low" });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 2, chainId: "chain-1", timestamp: "2024-01-01T11:00:00.000Z", previousHash: "h1", riskLevel: "high" });
 
+    const tool = createQueryReceiptsTool({ daemonDbPath: dbPath, daemonPublicKeyPath: "" });
     const result = await tool.execute("tc-q", { risk_level: "high" });
     const data = JSON.parse(result.content[0].text);
 
@@ -67,12 +133,10 @@ describe("ar_query_receipts", () => {
   });
 
   it("filters by status", async () => {
-    await simulateToolCall(deps, "read_file", { path: "/a.txt" }, { toolCallId: "tc-1" });
-    await simulateToolCall(deps, "read_file", { path: "/missing.txt" }, {
-      toolCallId: "tc-2",
-      error: "not found",
-    });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 1, chainId: "chain-1", timestamp: "2024-01-01T10:00:00.000Z", previousHash: null, status: "success" });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 2, chainId: "chain-1", timestamp: "2024-01-01T11:00:00.000Z", previousHash: "h1", status: "failure" });
 
+    const tool = createQueryReceiptsTool({ daemonDbPath: dbPath, daemonPublicKeyPath: "" });
     const result = await tool.execute("tc-q", { status: "failure" });
     const data = JSON.parse(result.content[0].text);
 
@@ -82,9 +146,14 @@ describe("ar_query_receipts", () => {
 
   it("respects limit", async () => {
     for (let i = 0; i < 5; i++) {
-      await simulateToolCall(deps, "read_file", { path: `/f${i}` }, { toolCallId: `tc-${i}` });
+      insertReceiptAt(writableStore, keys.privateKey, {
+        seq: i + 1, chainId: "chain-1",
+        timestamp: `2024-01-01T${String(i + 10).padStart(2, "0")}:00:00.000Z`,
+        previousHash: i === 0 ? null : `h${i}`,
+      });
     }
 
+    const tool = createQueryReceiptsTool({ daemonDbPath: dbPath, daemonPublicKeyPath: "" });
     const result = await tool.execute("tc-q", { limit: 2 });
     const data = JSON.parse(result.content[0].text);
 
@@ -93,9 +162,10 @@ describe("ar_query_receipts", () => {
   });
 
   it("includes stats summary", async () => {
-    await simulateToolCall(deps, "read_file", { path: "/a.txt" }, { toolCallId: "tc-1" });
-    await simulateToolCall(deps, "delete_file", { path: "/b.txt" }, { toolCallId: "tc-2" });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 1, chainId: "chain-1", timestamp: "2024-01-01T10:00:00.000Z", previousHash: null, riskLevel: "low" });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 2, chainId: "chain-1", timestamp: "2024-01-01T11:00:00.000Z", previousHash: "h1", riskLevel: "high" });
 
+    const tool = createQueryReceiptsTool({ daemonDbPath: dbPath, daemonPublicKeyPath: "" });
     const result = await tool.execute("tc-q", {});
     const data = JSON.parse(result.content[0].text);
 
@@ -107,113 +177,79 @@ describe("ar_query_receipts", () => {
   });
 
   it("ignores invalid risk_level values", async () => {
-    await simulateToolCall(deps, "read_file", { path: "/a.txt" }, { toolCallId: "tc-1" });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 1, chainId: "chain-1", timestamp: "2024-01-01T10:00:00.000Z", previousHash: null });
 
+    const tool = createQueryReceiptsTool({ daemonDbPath: dbPath, daemonPublicKeyPath: "" });
     const result = await tool.execute("tc-q", { risk_level: "invalid_value" });
     const data = JSON.parse(result.content[0].text);
 
-    // Invalid risk_level is ignored, returns all results
+    // Invalid risk_level is silently ignored — returns all results
     expect(data.results).toHaveLength(1);
   });
 
   it("ignores invalid status values", async () => {
-    await simulateToolCall(deps, "read_file", { path: "/a.txt" }, { toolCallId: "tc-1" });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 1, chainId: "chain-1", timestamp: "2024-01-01T10:00:00.000Z", previousHash: null });
 
+    const tool = createQueryReceiptsTool({ daemonDbPath: dbPath, daemonPublicKeyPath: "" });
     const result = await tool.execute("tc-q", { status: "not_a_status" });
     const data = JSON.parse(result.content[0].text);
 
-    // Invalid status is ignored, returns all results
+    // Invalid status is silently ignored — returns all results
     expect(data.results).toHaveLength(1);
   });
 });
 
-/**
- * Insert a minimal signed receipt at an explicit timestamp directly into the store.
- * This lets ordering tests control timestamps precisely without relying on wall-clock.
- */
-function insertReceiptAt(
-  store: ReceiptStore,
-  deps: ReturnType<typeof makeHookDeps>,
-  opts: {
-    seq: number;
-    chainId: string;
-    timestamp: string;
-    previousHash: string | null;
-    actionType?: string;
-  },
-): string {
-  const unsigned = createReceipt({
-    issuer: { id: "did:openclaw:test-agent" },
-    principal: { id: "did:session:test-session" },
-    action: {
-      type: opts.actionType ?? "filesystem.file.read",
-      risk_level: "low",
-      target: { system: "openclaw", resource: "read_file" },
-      parameters_hash: "abc123",
-    },
-    outcome: { status: "success" },
-    chain: {
-      sequence: opts.seq,
-      previous_receipt_hash: opts.previousHash,
-      chain_id: opts.chainId,
-    },
-    actionTimestamp: opts.timestamp,
-  });
-  const signed = signReceipt(unsigned, deps.privateKey, "did:openclaw:test-agent#key-1");
-  const hash = hashReceipt(signed);
-  store.insert(signed, hash);
-  return hash;
-}
+// ---- ar_query_receipts — filters and ordering ----
 
 describe("ar_query_receipts — filters and ordering", () => {
-  let store: ReceiptStore;
-  let deps: ReturnType<typeof makeHookDeps>;
+  let tempDir: string;
+  let dbPath: string;
+  let keys: ReturnType<typeof generateKeyPair>;
+  let writableStore: ReceiptStore;
   let tool: ReturnType<typeof createQueryReceiptsTool>;
 
   const CHAIN_A = "chain_openclaw_test-session_sid-1";
   const CHAIN_B = "chain_openclaw_test-session_sid-2";
 
   beforeEach(() => {
-    store = openStore(":memory:");
-    deps = makeHookDeps(store);
-    // Construct with session context matching CHAIN_A so session-default chain
-    // resolves correctly for tests that rely on it.
-    tool = createQueryReceiptsToolFactory({
-      store,
-      publicKey: deps.publicKey,
-      getChainId: (sk, sid) => getChainId(deps.chains, sk, sid),
-    })({ sessionKey: "test-session", sessionId: "sid-1" });
+    tempDir = join(tmpdir(), `ar-test-${randomUUID()}`);
+    mkdirSync(tempDir, { recursive: true });
+    dbPath = join(tempDir, "receipts.db");
+    keys = generateKeyPair();
+    writableStore = openStore(dbPath);
+    tool = createQueryReceiptsTool({ daemonDbPath: dbPath, daemonPublicKeyPath: "" });
   });
 
   afterEach(() => {
-    store.close();
+    writableStore.close();
+    rmSync(tempDir, { recursive: true, force: true });
   });
 
   it("default ordering is newest-first", async () => {
-    insertReceiptAt(store, deps, { seq: 1, chainId: CHAIN_A, timestamp: "2024-01-01T10:00:00.000Z", previousHash: null });
-    insertReceiptAt(store, deps, { seq: 2, chainId: CHAIN_A, timestamp: "2024-01-01T11:00:00.000Z", previousHash: "h1" });
-    insertReceiptAt(store, deps, { seq: 3, chainId: CHAIN_A, timestamp: "2024-01-01T12:00:00.000Z", previousHash: "h2" });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 1, chainId: CHAIN_A, timestamp: "2024-01-01T10:00:00.000Z", previousHash: null });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 2, chainId: CHAIN_A, timestamp: "2024-01-01T11:00:00.000Z", previousHash: "h1" });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 3, chainId: CHAIN_A, timestamp: "2024-01-01T12:00:00.000Z", previousHash: "h2" });
 
-    const result = await tool.execute("tc-q", { chain_id: CHAIN_A });
+    const result = await tool.execute("tc-q", {});
     const data = JSON.parse(result.content[0].text);
 
     expect(data.results).toHaveLength(3);
-    // First result should be the latest timestamp
     expect(data.results[0].timestamp).toBe("2024-01-01T12:00:00.000Z");
     expect(data.results[2].timestamp).toBe("2024-01-01T10:00:00.000Z");
   });
 
   it("limit is applied after newest-first ordering", async () => {
-    insertReceiptAt(store, deps, { seq: 1, chainId: CHAIN_A, timestamp: "2024-01-01T08:00:00.000Z", previousHash: null });
-    insertReceiptAt(store, deps, { seq: 2, chainId: CHAIN_A, timestamp: "2024-01-01T09:00:00.000Z", previousHash: "h1" });
-    insertReceiptAt(store, deps, { seq: 3, chainId: CHAIN_A, timestamp: "2024-01-01T10:00:00.000Z", previousHash: "h2" });
-    insertReceiptAt(store, deps, { seq: 4, chainId: CHAIN_A, timestamp: "2024-01-01T11:00:00.000Z", previousHash: "h3" });
-    insertReceiptAt(store, deps, { seq: 5, chainId: CHAIN_A, timestamp: "2024-01-01T12:00:00.000Z", previousHash: "h4" });
+    for (let i = 1; i <= 5; i++) {
+      insertReceiptAt(writableStore, keys.privateKey, {
+        seq: i, chainId: CHAIN_A,
+        timestamp: `2024-01-01T${String(i + 7).padStart(2, "0")}:00:00.000Z`,
+        previousHash: i === 1 ? null : `h${i - 1}`,
+      });
+    }
 
-    const result = await tool.execute("tc-q", { chain_id: CHAIN_A, limit: 2 });
+    const result = await tool.execute("tc-q", { limit: 2 });
     const data = JSON.parse(result.content[0].text);
 
-    // Should return the 2 newest, not the 2 oldest
     expect(data.results).toHaveLength(2);
     expect(data.results[0].timestamp).toBe("2024-01-01T12:00:00.000Z");
     expect(data.results[1].timestamp).toBe("2024-01-01T11:00:00.000Z");
@@ -224,12 +260,11 @@ describe("ar_query_receipts — filters and ordering", () => {
     const T1 = "2024-01-01T08:00:00.000Z";
     const T2 = "2024-01-01T10:00:00.000Z";
     const T3 = "2024-01-01T12:00:00.000Z";
-    insertReceiptAt(store, deps, { seq: 1, chainId: CHAIN_A, timestamp: T1, previousHash: null });
-    insertReceiptAt(store, deps, { seq: 2, chainId: CHAIN_A, timestamp: T2, previousHash: "h1" });
-    insertReceiptAt(store, deps, { seq: 3, chainId: CHAIN_A, timestamp: T3, previousHash: "h2" });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 1, chainId: CHAIN_A, timestamp: T1, previousHash: null });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 2, chainId: CHAIN_A, timestamp: T2, previousHash: "h1" });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 3, chainId: CHAIN_A, timestamp: T3, previousHash: "h2" });
 
-    // Polling with timestamp_after: T1 should return T2 and T3 but NOT T1 itself.
-    const result = await tool.execute("tc-q", { chain_id: CHAIN_A, timestamp_after: T1 });
+    const result = await tool.execute("tc-q", { timestamp_after: T1 });
     const data = JSON.parse(result.content[0].text);
 
     expect(data.results).toHaveLength(2);
@@ -240,11 +275,11 @@ describe("ar_query_receipts — filters and ordering", () => {
   });
 
   it("filters by timestamp_after (mid-range)", async () => {
-    insertReceiptAt(store, deps, { seq: 1, chainId: CHAIN_A, timestamp: "2024-01-01T08:00:00.000Z", previousHash: null });
-    insertReceiptAt(store, deps, { seq: 2, chainId: CHAIN_A, timestamp: "2024-01-01T10:00:00.000Z", previousHash: "h1" });
-    insertReceiptAt(store, deps, { seq: 3, chainId: CHAIN_A, timestamp: "2024-01-01T12:00:00.000Z", previousHash: "h2" });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 1, chainId: CHAIN_A, timestamp: "2024-01-01T08:00:00.000Z", previousHash: null });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 2, chainId: CHAIN_A, timestamp: "2024-01-01T10:00:00.000Z", previousHash: "h1" });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 3, chainId: CHAIN_A, timestamp: "2024-01-01T12:00:00.000Z", previousHash: "h2" });
 
-    const result = await tool.execute("tc-q", { chain_id: CHAIN_A, timestamp_after: "2024-01-01T09:00:00.000Z" });
+    const result = await tool.execute("tc-q", { timestamp_after: "2024-01-01T09:00:00.000Z" });
     const data = JSON.parse(result.content[0].text);
 
     expect(data.results).toHaveLength(2);
@@ -254,11 +289,11 @@ describe("ar_query_receipts — filters and ordering", () => {
   });
 
   it("filters by timestamp_before", async () => {
-    insertReceiptAt(store, deps, { seq: 1, chainId: CHAIN_A, timestamp: "2024-01-01T08:00:00.000Z", previousHash: null });
-    insertReceiptAt(store, deps, { seq: 2, chainId: CHAIN_A, timestamp: "2024-01-01T10:00:00.000Z", previousHash: "h1" });
-    insertReceiptAt(store, deps, { seq: 3, chainId: CHAIN_A, timestamp: "2024-01-01T12:00:00.000Z", previousHash: "h2" });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 1, chainId: CHAIN_A, timestamp: "2024-01-01T08:00:00.000Z", previousHash: null });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 2, chainId: CHAIN_A, timestamp: "2024-01-01T10:00:00.000Z", previousHash: "h1" });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 3, chainId: CHAIN_A, timestamp: "2024-01-01T12:00:00.000Z", previousHash: "h2" });
 
-    const result = await tool.execute("tc-q", { chain_id: CHAIN_A, timestamp_before: "2024-01-01T11:00:00.000Z" });
+    const result = await tool.execute("tc-q", { timestamp_before: "2024-01-01T11:00:00.000Z" });
     const data = JSON.parse(result.content[0].text);
 
     expect(data.results).toHaveLength(2);
@@ -267,27 +302,13 @@ describe("ar_query_receipts — filters and ordering", () => {
     }
   });
 
-  it("filters by chain_id", async () => {
-    insertReceiptAt(store, deps, { seq: 1, chainId: CHAIN_A, timestamp: "2024-01-01T10:00:00.000Z", previousHash: null });
-    insertReceiptAt(store, deps, { seq: 2, chainId: CHAIN_A, timestamp: "2024-01-01T11:00:00.000Z", previousHash: "h1" });
-    insertReceiptAt(store, deps, { seq: 1, chainId: CHAIN_B, timestamp: "2024-01-01T12:00:00.000Z", previousHash: null });
-
-    const result = await tool.execute("tc-q", { chain_id: CHAIN_A });
-    const data = JSON.parse(result.content[0].text);
-
-    expect(data.results).toHaveLength(2);
-    expect(data.total_receipts).toBe(3);
-  });
-
   it("combining timestamp_after and limit returns newest receipts after cutoff", async () => {
-    insertReceiptAt(store, deps, { seq: 1, chainId: CHAIN_A, timestamp: "2024-01-01T06:00:00.000Z", previousHash: null });
-    insertReceiptAt(store, deps, { seq: 2, chainId: CHAIN_A, timestamp: "2024-01-01T10:00:00.000Z", previousHash: "h1" });
-    insertReceiptAt(store, deps, { seq: 3, chainId: CHAIN_A, timestamp: "2024-01-01T11:00:00.000Z", previousHash: "h2" });
-    insertReceiptAt(store, deps, { seq: 4, chainId: CHAIN_A, timestamp: "2024-01-01T12:00:00.000Z", previousHash: "h3" });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 1, chainId: CHAIN_A, timestamp: "2024-01-01T06:00:00.000Z", previousHash: null });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 2, chainId: CHAIN_A, timestamp: "2024-01-01T10:00:00.000Z", previousHash: "h1" });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 3, chainId: CHAIN_A, timestamp: "2024-01-01T11:00:00.000Z", previousHash: "h2" });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 4, chainId: CHAIN_A, timestamp: "2024-01-01T12:00:00.000Z", previousHash: "h3" });
 
-    // Poll: "give me the latest 2 receipts since 09:00"
     const result = await tool.execute("tc-q", {
-      chain_id: CHAIN_A,
       timestamp_after: "2024-01-01T09:00:00.000Z",
       limit: 2,
     });
@@ -299,29 +320,27 @@ describe("ar_query_receipts — filters and ordering", () => {
   });
 
   it("ignores invalid timestamp_after values", async () => {
-    insertReceiptAt(store, deps, { seq: 1, chainId: CHAIN_A, timestamp: "2024-01-01T10:00:00.000Z", previousHash: null });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 1, chainId: CHAIN_A, timestamp: "2024-01-01T10:00:00.000Z", previousHash: null });
 
-    const result = await tool.execute("tc-q", { chain_id: CHAIN_A, timestamp_after: "not-a-date" });
+    const result = await tool.execute("tc-q", { timestamp_after: "not-a-date" });
     const data = JSON.parse(result.content[0].text);
 
-    // Invalid timestamp is ignored — returns all results
     expect(data.results).toHaveLength(1);
   });
 
   it("ignores invalid timestamp_before values", async () => {
-    insertReceiptAt(store, deps, { seq: 1, chainId: CHAIN_A, timestamp: "2024-01-01T10:00:00.000Z", previousHash: null });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 1, chainId: CHAIN_A, timestamp: "2024-01-01T10:00:00.000Z", previousHash: null });
 
-    const result = await tool.execute("tc-q", { chain_id: CHAIN_A, timestamp_before: "not-a-date" });
+    const result = await tool.execute("tc-q", { timestamp_before: "not-a-date" });
     const data = JSON.parse(result.content[0].text);
 
-    // Invalid timestamp is ignored — returns all results
     expect(data.results).toHaveLength(1);
   });
 
   it("result shape includes chain_id field", async () => {
-    insertReceiptAt(store, deps, { seq: 1, chainId: CHAIN_A, timestamp: "2024-01-01T10:00:00.000Z", previousHash: null });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 1, chainId: CHAIN_A, timestamp: "2024-01-01T10:00:00.000Z", previousHash: null });
 
-    const result = await tool.execute("tc-q", { chain_id: CHAIN_A });
+    const result = await tool.execute("tc-q", {});
     const data = JSON.parse(result.content[0].text);
 
     expect(data.results).toHaveLength(1);
@@ -329,170 +348,164 @@ describe("ar_query_receipts — filters and ordering", () => {
   });
 
   it("limit: -1 falls back to default of 20", async () => {
-    // Insert 25 receipts so we can distinguish 20 from 25
     for (let i = 1; i <= 25; i++) {
-      insertReceiptAt(store, deps, {
-        seq: i,
-        chainId: CHAIN_A,
+      insertReceiptAt(writableStore, keys.privateKey, {
+        seq: i, chainId: CHAIN_A,
         timestamp: `2024-01-01T${String(i).padStart(2, "0")}:00:00.000Z`,
         previousHash: i === 1 ? null : `h${i - 1}`,
       });
     }
 
-    const result = await tool.execute("tc-q", { chain_id: CHAIN_A, limit: -1 });
+    const result = await tool.execute("tc-q", { limit: -1 });
     const data = JSON.parse(result.content[0].text);
 
-    // -1 is invalid; falls back to default 20
     expect(data.results).toHaveLength(20);
   });
 
   it("limit: 5.7 (non-integer) falls back to default 20, not 5", async () => {
-    // Insert 25 receipts
     for (let i = 1; i <= 25; i++) {
-      insertReceiptAt(store, deps, {
-        seq: i,
-        chainId: CHAIN_A,
+      insertReceiptAt(writableStore, keys.privateKey, {
+        seq: i, chainId: CHAIN_A,
         timestamp: `2024-01-01T${String(i).padStart(2, "0")}:00:00.000Z`,
         previousHash: i === 1 ? null : `h${i - 1}`,
       });
     }
 
-    const result = await tool.execute("tc-q", { chain_id: CHAIN_A, limit: 5.7 });
+    const result = await tool.execute("tc-q", { limit: 5.7 });
     const data = JSON.parse(result.content[0].text);
 
-    // 5.7 is not an integer; falls back to default 20, not Math.floor(5.7)=5
     expect(data.results).toHaveLength(20);
   });
 
   it("same-millisecond sequence tiebreaker: higher sequence comes first", async () => {
     const SAME_TS = "2024-01-01T10:00:00.000Z";
-    insertReceiptAt(store, deps, { seq: 1, chainId: CHAIN_A, timestamp: SAME_TS, previousHash: null });
-    insertReceiptAt(store, deps, { seq: 2, chainId: CHAIN_A, timestamp: SAME_TS, previousHash: "h1" });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 1, chainId: CHAIN_A, timestamp: SAME_TS, previousHash: null });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 2, chainId: CHAIN_A, timestamp: SAME_TS, previousHash: "h1" });
 
-    const result = await tool.execute("tc-q", { chain_id: CHAIN_A });
+    const result = await tool.execute("tc-q", {});
     const data = JSON.parse(result.content[0].text);
 
     expect(data.results).toHaveLength(2);
-    // seq 2 is "newer" within the same millisecond — must come first
     expect(data.results[0].sequence).toBe(2);
     expect(data.results[1].sequence).toBe(1);
   });
 
-  it("defaults chain_id to current session's chain when omitted", async () => {
-    // Session A receipts (CHAIN_A) — inserted via simulateToolCall
-    await simulateToolCall(deps, "read_file", { path: "/a.txt" }, { toolCallId: "tc-a1", sessionKey: "test-session", sessionId: "sid-1" });
-    await simulateToolCall(deps, "read_file", { path: "/a2.txt" }, { toolCallId: "tc-a2", sessionKey: "test-session", sessionId: "sid-1" });
-    // Session B receipt (CHAIN_B)
-    await simulateToolCall(deps, "read_file", { path: "/b.txt" }, { toolCallId: "tc-b1", sessionKey: "test-session", sessionId: "sid-2" });
+  it("returns receipts from all chains when no filter is applied", async () => {
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 1, chainId: CHAIN_A, timestamp: "2024-01-01T10:00:00.000Z", previousHash: null });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 2, chainId: CHAIN_A, timestamp: "2024-01-01T11:00:00.000Z", previousHash: "h1" });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 1, chainId: CHAIN_B, timestamp: "2024-01-01T12:00:00.000Z", previousHash: null });
 
-    // Query from session A context with no chain_id — should only return session A receipts
-    const sessionATool = createQueryReceiptsToolFactory({
-      store,
-      publicKey: deps.publicKey,
-      getChainId: (sk, sid) => getChainId(deps.chains, sk, sid),
-    })({ sessionKey: "test-session", sessionId: "sid-1" });
-
-    const result = await sessionATool.execute("tc-q", {});
-    const data = JSON.parse(result.content[0].text);
-
-    expect(data.results).toHaveLength(2);
-    expect(data.total_receipts).toBe(3);
-    for (const r of data.results) {
-      expect(r.chain_id).toBe(CHAIN_A);
-    }
-  });
-
-  it("all_chains: true returns receipts from every chain", async () => {
-    await simulateToolCall(deps, "read_file", { path: "/a.txt" }, { toolCallId: "tc-a1", sessionKey: "test-session", sessionId: "sid-1" });
-    await simulateToolCall(deps, "read_file", { path: "/a2.txt" }, { toolCallId: "tc-a2", sessionKey: "test-session", sessionId: "sid-1" });
-    await simulateToolCall(deps, "read_file", { path: "/b.txt" }, { toolCallId: "tc-b1", sessionKey: "test-session", sessionId: "sid-2" });
-
-    // Query from session A context with all_chains — should return all 3
-    const sessionATool = createQueryReceiptsToolFactory({
-      store,
-      publicKey: deps.publicKey,
-      getChainId: (sk, sid) => getChainId(deps.chains, sk, sid),
-    })({ sessionKey: "test-session", sessionId: "sid-1" });
-
-    const result = await sessionATool.execute("tc-q", { all_chains: true });
+    const result = await tool.execute("tc-q", {});
     const data = JSON.parse(result.content[0].text);
 
     expect(data.results).toHaveLength(3);
-  });
-
-  it("explicit chain_id beats session default", async () => {
-    await simulateToolCall(deps, "read_file", { path: "/a.txt" }, { toolCallId: "tc-a1", sessionKey: "test-session", sessionId: "sid-1" });
-    await simulateToolCall(deps, "read_file", { path: "/a2.txt" }, { toolCallId: "tc-a2", sessionKey: "test-session", sessionId: "sid-1" });
-    await simulateToolCall(deps, "read_file", { path: "/b.txt" }, { toolCallId: "tc-b1", sessionKey: "test-session", sessionId: "sid-2" });
-
-    // Query from session A context but explicitly targeting session B's chain
-    const sessionATool = createQueryReceiptsToolFactory({
-      store,
-      publicKey: deps.publicKey,
-      getChainId: (sk, sid) => getChainId(deps.chains, sk, sid),
-    })({ sessionKey: "test-session", sessionId: "sid-1" });
-
-    const result = await sessionATool.execute("tc-q", { chain_id: CHAIN_B });
-    const data = JSON.parse(result.content[0].text);
-
-    expect(data.results).toHaveLength(1);
-    expect(data.results[0].chain_id).toBe(CHAIN_B);
+    expect(data.total_receipts).toBe(3);
+    expect(data.total_chains).toBe(2);
   });
 });
 
+// ---- ar_verify_chain ----
+
 describe("ar_verify_chain", () => {
-  let store: ReceiptStore;
-  let deps: ReturnType<typeof makeHookDeps>;
-  let tool: ReturnType<typeof createVerifyChainTool>;
+  let tempDir: string;
+  let dbPath: string;
+  let pubKeyPath: string;
+  let keys: ReturnType<typeof generateKeyPair>;
+  let writableStore: ReceiptStore;
 
   beforeEach(() => {
-    store = openStore(":memory:");
-    deps = makeHookDeps(store);
-    tool = createVerifyChainTool({
-      store,
-      publicKey: deps.publicKey,
-      getChainId: (sk, sid) => getChainId(deps.chains, sk, sid),
-    });
+    tempDir = join(tmpdir(), `ar-test-${randomUUID()}`);
+    mkdirSync(tempDir, { recursive: true });
+    dbPath = join(tempDir, "receipts.db");
+    pubKeyPath = join(tempDir, "signing.key.pub");
+    keys = generateKeyPair();
+    writeFileSync(pubKeyPath, keys.publicKey);
+    writableStore = openStore(dbPath);
   });
 
   afterEach(() => {
-    store.close();
+    writableStore.close();
+    rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it("returns valid for a correct chain", async () => {
-    for (let i = 0; i < 3; i++) {
-      await simulateToolCall(deps, "read_file", { path: `/f${i}` }, { toolCallId: `tc-${i}` });
-    }
+  it("returns valid for a correctly hash-linked chain", async () => {
+    const h1 = insertReceiptAt(writableStore, keys.privateKey, { seq: 1, chainId: "chain-1", timestamp: "2024-01-01T10:00:00.000Z", previousHash: null });
+    const h2 = insertReceiptAt(writableStore, keys.privateKey, { seq: 2, chainId: "chain-1", timestamp: "2024-01-01T11:00:00.000Z", previousHash: h1 });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 3, chainId: "chain-1", timestamp: "2024-01-01T12:00:00.000Z", previousHash: h2 });
 
-    const chainId = getChainId(deps.chains, "test-session", "sid-1");
-    const result = await tool.execute("tc-v", { chain_id: chainId });
+    const tool = createVerifyChainTool({ daemonDbPath: dbPath, daemonPublicKeyPath: pubKeyPath });
+    const result = await tool.execute("tc-v", { chain_id: "chain-1" });
 
     expect(result.content[0].text).toContain("is valid");
+    expect(result.content[0].text).toContain("3 receipts");
     const data = JSON.parse(result.content[1].text);
     expect(data.valid).toBe(true);
     expect(data.length).toBe(3);
+    for (const r of data.receipts) {
+      expect(r.signature_valid).toBe(true);
+      expect(r.hash_link_valid).toBe(true);
+      expect(r.sequence_valid).toBe(true);
+    }
   });
 
-  it("defaults to current session chain ID via factory context", async () => {
-    await simulateToolCall(deps, "read_file", { path: "/a.txt" });
+  it("auto-discovers the chain when chain_id is omitted", async () => {
+    const h1 = insertReceiptAt(writableStore, keys.privateKey, { seq: 1, chainId: "chain-auto", timestamp: "2024-01-01T10:00:00.000Z", previousHash: null });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 2, chainId: "chain-auto", timestamp: "2024-01-01T11:00:00.000Z", previousHash: h1 });
 
-    // Create tool via factory with session context (OpenClaw pattern)
-    const toolWithCtx = createVerifyChainToolFactory({
-      store,
-      publicKey: deps.publicKey,
-      getChainId: (sk, sid) => getChainId(deps.chains, sk, sid),
-    })({ sessionKey: "test-session", sessionId: "sid-1" });
-
-    const result = await toolWithCtx.execute("tc-v", {});
+    const tool = createVerifyChainTool({ daemonDbPath: dbPath, daemonPublicKeyPath: pubKeyPath });
+    const result = await tool.execute("tc-v", {});
 
     expect(result.content[0].text).toContain("is valid");
+    const data = JSON.parse(result.content[1].text);
+    expect(data.chain_id).toBe("chain-auto");
+    expect(data.valid).toBe(true);
+    expect(data.length).toBe(2);
   });
 
-  it("reports empty chain as valid with length 0", async () => {
+  it("reports no receipts found when the DB is empty and chain_id is omitted", async () => {
+    const tool = createVerifyChainTool({ daemonDbPath: dbPath, daemonPublicKeyPath: pubKeyPath });
+    const result = await tool.execute("tc-v", {});
+
+    expect(result.content[0].text).toContain("No receipts found");
+    expect(result.details.valid).toBe(false);
+    expect(result.details.length).toBe(0);
+  });
+
+  it("reports empty chain as valid (length 0) when an explicit chain_id has no receipts", async () => {
+    // Insert receipts under a different chain so the DB file is not empty
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 1, chainId: "other-chain", timestamp: "2024-01-01T10:00:00.000Z", previousHash: null });
+
+    const tool = createVerifyChainTool({ daemonDbPath: dbPath, daemonPublicKeyPath: pubKeyPath });
     const result = await tool.execute("tc-v", { chain_id: "chain_nonexistent" });
 
     const data = JSON.parse(result.content[1].text);
     expect(data.valid).toBe(true);
     expect(data.length).toBe(0);
+  });
+
+  it("returns an error message when the public key file is missing", async () => {
+    const h1 = insertReceiptAt(writableStore, keys.privateKey, { seq: 1, chainId: "chain-1", timestamp: "2024-01-01T10:00:00.000Z", previousHash: null });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 2, chainId: "chain-1", timestamp: "2024-01-01T11:00:00.000Z", previousHash: h1 });
+
+    const tool = createVerifyChainTool({ daemonDbPath: dbPath, daemonPublicKeyPath: "/nonexistent/path/signing.key.pub" });
+    const result = await tool.execute("tc-v", { chain_id: "chain-1" });
+
+    expect(result.content[0].text).toContain("Cannot read daemon public key");
+  });
+
+  it("factory context is accepted but not required for chain verification", async () => {
+    const h1 = insertReceiptAt(writableStore, keys.privateKey, { seq: 1, chainId: "chain-ctx", timestamp: "2024-01-01T10:00:00.000Z", previousHash: null });
+    insertReceiptAt(writableStore, keys.privateKey, { seq: 2, chainId: "chain-ctx", timestamp: "2024-01-01T11:00:00.000Z", previousHash: h1 });
+
+    // Factory is called with session context (OpenClaw pattern) but ignores it
+    const tool = createVerifyChainToolFactory({ daemonDbPath: dbPath, daemonPublicKeyPath: pubKeyPath })({
+      sessionKey: "test-session",
+      sessionId: "sid-1",
+    });
+    const result = await tool.execute("tc-v", { chain_id: "chain-ctx" });
+
+    expect(result.content[0].text).toContain("is valid");
+    const data = JSON.parse(result.content[1].text);
+    expect(data.valid).toBe(true);
   });
 });
