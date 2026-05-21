@@ -32,6 +32,27 @@
           { "type": "array", "items": { "type": "string" } }
         ],
         "description": "Deprecated under daemon mode — parameter disclosure is now controlled by the daemon's --parameter-disclosure flag. Setting this emits a startup warning and has no effect."
+      },
+      "dbPath": {
+        "type": "string",
+        "description": "Deprecated (Flavor A). Ignored in daemon mode — use daemonDbPath instead."
+      },
+      "keyPath": {
+        "type": "string",
+        "description": "Deprecated (Flavor A). Ignored in daemon mode — use daemonPublicKeyPath instead."
+      },
+      "daemonForwarding": {
+        "oneOf": [
+          { "type": "boolean" },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "enabled": { "type": "boolean" }
+            }
+          }
+        ],
+        "description": "Deprecated (Flavor A). Ignored — forwarding is always enabled in daemon mode."
       }
     }
   },

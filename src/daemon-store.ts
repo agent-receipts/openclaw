@@ -12,7 +12,7 @@
 
 import { DatabaseSync } from "node:sqlite";
 import { pathToFileURL } from "node:url";
-import { ReceiptStore } from "@agnt-rcpt/sdk-ts";
+import { ReceiptStore, verifyStoredChain, type ChainVerification } from "@agnt-rcpt/sdk-ts";
 
 /**
  * Narrow read-only view of a ReceiptStore.
@@ -26,6 +26,19 @@ export type DaemonStoreReader = Pick<ReceiptStore, "query" | "stats" | "close" |
  * Open the daemon's SQLite receipt DB read-only.
  * Caller must call .close() when done.
  */
+/**
+ * Verify a receipt chain against a public key, using a DaemonStoreReader.
+ * The unsafe cast to ReceiptStore lives here, next to the other bypass code,
+ * so tools.ts stays free of type assertions.
+ */
+export function verifyDaemonChain(
+  store: DaemonStoreReader,
+  chainId: string,
+  publicKeyPEM: string,
+): ChainVerification {
+  return verifyStoredChain(store as unknown as ReceiptStore, chainId, publicKeyPEM);
+}
+
 export function openDaemonStore(dbPath: string): DaemonStoreReader {
   const uri = `${pathToFileURL(dbPath).href}?mode=ro`;
   const db = new DatabaseSync(uri);

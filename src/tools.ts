@@ -12,9 +12,8 @@
 
 import { readFileSync } from "node:fs";
 import { Type } from "@sinclair/typebox";
-import type { RiskLevel, OutcomeStatus, ReceiptStore } from "@agnt-rcpt/sdk-ts";
-import { verifyStoredChain } from "@agnt-rcpt/sdk-ts";
-import { openDaemonStore, type DaemonStoreReader } from "./daemon-store.js";
+import type { RiskLevel, OutcomeStatus } from "@agnt-rcpt/sdk-ts";
+import { openDaemonStore, verifyDaemonChain, type DaemonStoreReader } from "./daemon-store.js";
 
 const VALID_RISK_LEVELS = new Set<string>(["low", "medium", "high", "critical"]);
 const VALID_STATUSES = new Set<string>(["success", "failure", "pending"]);
@@ -223,10 +222,7 @@ export function createVerifyChainToolFactory(deps: ToolDeps) {
           };
         }
 
-        // Cast needed: verifyStoredChain requires full ReceiptStore but store is the narrow
-        // DaemonStoreReader. The runtime object is a ReceiptStore instance; the narrow
-        // type just prevents callers from reaching write methods.
-        const verification = verifyStoredChain(store as unknown as ReceiptStore, chainId, publicKeyPEM);
+        const verification = verifyDaemonChain(store, chainId, publicKeyPEM);
 
         const result = {
           chain_id: chainId,

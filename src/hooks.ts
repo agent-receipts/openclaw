@@ -102,6 +102,9 @@ export function beforeToolCall(
         ...(inputJson !== undefined ? { input: inputJson } : {}),
         decision: "pending",
       })
+      .then((err) => {
+        if (err) deps.logger.warn(`agent-receipts: emitter pre-call error: ${err.message}`);
+      })
       .catch(() => {});
   } catch (err) {
     deps.logger.warn(
@@ -167,6 +170,9 @@ export async function afterToolCall(
         ...(resultJson !== undefined ? { output: resultJson } : {}),
         ...(event.error !== undefined ? { error: event.error } : {}),
         decision: "allowed",
+      })
+      .then((err) => {
+        if (err) deps.logger.warn(`agent-receipts: emitter post-call error: ${err.message}`);
       })
       .catch(() => {});
   } catch (err) {
