@@ -7,10 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- `CHANGELOG.md` is now shipped in the npm tarball (added to `package.json` `files`). `CONTRIBUTING.md` and `AGENTS.md` document the contributor workflow: add an entry under `## [Unreleased]` for user-visible changes; the release script promotes it to a versioned heading ([#95](https://github.com/agent-receipts/openclaw/issues/95)).
-
 ### Changed (breaking)
 
 - **Daemon is now required (ADR-0010 Flavor B).** The plugin no longer holds keys, chain state, or a local SQLite store. Every tool call is forwarded to the local agent-receipts daemon over AF_UNIX; the daemon signs, hash-links, and stores receipts. If the socket is unreachable at startup, a warning is logged. Per-frame delivery is fire-and-forget — no receipts are recorded while the daemon is absent.
@@ -28,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `CHANGELOG.md` is now shipped in the npm tarball (added to `package.json` `files`). `CONTRIBUTING.md` and `AGENTS.md` document the contributor workflow: add an entry under `## [Unreleased]` for user-visible changes; the release script promotes it to a versioned heading ([#95](https://github.com/agent-receipts/openclaw/issues/95)).
 - `src/daemon-store.ts` — opens the daemon's SQLite receipt database read-only via `DatabaseSync` URI mode.
 - `DaemonStoreReader` type — narrow interface (`query`, `stats`, `close`, `getChain`) limits callers to read-only operations.
 - `verifyDaemonChain` helper — centralises the one unsafe cast needed to bridge `DaemonStoreReader` with `verifyStoredChain`.

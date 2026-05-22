@@ -69,7 +69,7 @@ See the [convco installation docs](https://convco.github.io/check/installation/)
 
 ## Changelog
 
-User-visible changes (features, fixes, breaking changes, deprecations) belong in [`CHANGELOG.md`](CHANGELOG.md). Add an entry under the `## [Unreleased]` heading as part of your PR, using the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) section conventions (`Added`, `Changed`, `Changed (breaking)`, `Deprecated`, `Removed`, `Fixed`, `Security`). Link the issue or PR number when there is one.
+User-visible changes (features, fixes, breaking changes, deprecations) belong in [`CHANGELOG.md`](CHANGELOG.md). Add an entry under the `## [Unreleased]` heading as part of your PR. This repo extends [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with a custom `Changed (breaking)` section to separate breaking changes from regular improvements; use standard Keep a Changelog sections (`Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`) plus `Changed (breaking)`. Link the issue or PR number when there is one.
 
 Internal-only changes (refactors with no observable behavior change, CI tweaks, test-only edits) do not need a changelog entry.
 
