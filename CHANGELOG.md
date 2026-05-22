@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-05-22
+
 ### Changed (breaking)
 
 - **Daemon is now required (ADR-0010 Flavor B).** The plugin no longer holds keys, chain state, or a local SQLite store. Every tool call is forwarded to the local agent-receipts daemon over AF_UNIX; the daemon signs, hash-links, and stores receipts. If the socket is unreachable at startup, a warning is logged. Per-frame delivery is fire-and-forget — no receipts are recorded while the daemon is absent.
@@ -15,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`ar_verify_chain` reads the daemon DB and public key from disk.** Chain auto-discovery picks the first chain found; pass `chain_id` explicitly in multi-chain stores.
 - **Issuer DID.** Historical Flavor A chains were signed by the plugin under `did:openclaw:<agentId>`. New chains are signed by the daemon using its own identity. The discontinuity is expected; see the upgrade guide in the README.
 - **`parameterDisclosure` plugin config is now a no-op** and emits a startup warning. Use the daemon's `--parameter-disclosure` flag instead.
+
+### Changed
+
+- Bump `@agnt-rcpt/sdk-ts` to `^0.9.0` ([#146](https://github.com/agent-receipts/openclaw/pull/146)), which carries the v0.3.0 envelope-shape `parameters_disclosure` (per [agent-receipts/ar#280](https://github.com/agent-receipts/ar/issues/280) and validated end-to-end in [agent-receipts/ar#519](https://github.com/agent-receipts/ar/issues/519) §5). No openclaw API breakage — the new envelope type is only visible to callers that reach into `Action.parameters_disclosure` directly.
 
 ### Removed
 
@@ -30,6 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `verifyDaemonChain` helper — centralises the one unsafe cast needed to bridge `DaemonStoreReader` with `verifyStoredChain`.
 - Startup warning when the daemon socket is unreachable, with install instructions.
 - Caller-bug errors returned by `emitter.emit()` (e.g. invalid event fields, closed emitter) are now logged at warn level via the plugin logger. Transport-level drops (daemon unreachable mid-session) remain fire-and-forget and are not individually logged.
+
+### Known issues
+
+- Transitive `@hpke/core` dependency exposure is being addressed upstream — tracked in [agent-receipts/ar#473](https://github.com/agent-receipts/ar/issues/473). No action required from openclaw consumers.
 
 ## [0.8.0] - 2026-05-15
 
@@ -208,7 +218,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Security hardening: key file permissions, input validation, pending-map memory
   leak prevention (#22).
 
-[Unreleased]: https://github.com/agent-receipts/openclaw/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/agent-receipts/openclaw/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/agent-receipts/openclaw/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/agent-receipts/openclaw/compare/v0.6.0...v0.8.0
 [0.6.0]: https://github.com/agent-receipts/openclaw/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/agent-receipts/openclaw/compare/v0.4.0...v0.5.0
