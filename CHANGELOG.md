@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `CHANGELOG.md` is now shipped in the npm tarball (added to `package.json` `files`). `CONTRIBUTING.md` and `AGENTS.md` document the contributor workflow: add an entry under `## [Unreleased]` for user-visible changes; the release script promotes it to a versioned heading ([#95](https://github.com/agent-receipts/openclaw/issues/95)).
 - `src/daemon-store.ts` — opens the daemon's SQLite receipt database read-only via `DatabaseSync` URI mode.
 - `DaemonStoreReader` type — narrow interface (`query`, `stats`, `close`, `getChain`) limits callers to read-only operations.
 - `verifyDaemonChain` helper — centralises the one unsafe cast needed to bridge `DaemonStoreReader` with `verifyStoredChain`.

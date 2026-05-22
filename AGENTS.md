@@ -102,10 +102,11 @@ Before marking work as complete:
 
 1. Confirm all touched tests and linters pass.
 2. Re-read your full diff — check for mistakes, consistency, and completeness.
-3. Summarise changes with file and line references.
-4. Mention any opportunistic papercut fixes made along the way.
-5. Call out TODOs, follow-up work, or uncertainties.
-6. If opening a PR, verify the description accurately reflects the changes.
+3. Add an entry under `## [Unreleased]` in `CHANGELOG.md` for user-visible changes (skip for internal-only refactors, CI tweaks, or test-only edits).
+4. Summarise changes with file and line references.
+5. Mention any opportunistic papercut fixes made along the way.
+6. Call out TODOs, follow-up work, or uncertainties.
+7. If opening a PR, verify the description accurately reflects the changes.
 
 ## Agent safety rules
 
