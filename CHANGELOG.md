@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Socket emission silent failures and misleading startup warnings** ([#148](https://github.com/agent-receipts/openclaw/issues/148)):
+  - Startup probe timeout race no longer produces a false "connection timed out" warning. Timeout is now logged at info level without the install hint; only genuine errors (ENOENT, ECONNREFUSED, EPERM) print the install instructions.
+  - Emitter `debugLog` is now wired to `api.logger.info` so per-call transport drops (dial timeout, write timeout, peer reset) are visible in the openclaw log instead of silent.
+  - Hook handlers no longer silently swallow promise rejections from the emitter. Unexpected rejections are now logged at warn level.
+
 ## [0.9.0] - 2026-05-22
 
 ### Changed (breaking)

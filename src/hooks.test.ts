@@ -206,6 +206,46 @@ describe("hooks", () => {
 
       expect(unhandled).toHaveLength(0);
     });
+
+    it("logs a warning when beforeToolCall emit rejects", async () => {
+      const rejecting = {
+        emit: (): Promise<Error | null> =>
+          Promise.reject(new Error("emit rejected unexpectedly")),
+      };
+      const warnings: string[] = [];
+      const d = makeHookDeps({ emitter: rejecting });
+      d.logger = { info: () => {}, warn: (msg) => warnings.push(msg) };
+
+      beforeToolCall(
+        { toolName: "bash", params: {}, runId: "r1", toolCallId: "tc1" },
+        { sessionKey: "s" },
+        d,
+      );
+
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(warnings.some((w) => w.includes("pre-call rejected unexpectedly"))).toBe(true);
+    });
+
+    it("logs a warning when afterToolCall emit rejects", async () => {
+      const rejecting = {
+        emit: (): Promise<Error | null> =>
+          Promise.reject(new Error("emit rejected unexpectedly")),
+      };
+      const warnings: string[] = [];
+      const d = makeHookDeps({ emitter: rejecting });
+      d.logger = { info: () => {}, warn: (msg) => warnings.push(msg) };
+
+      await afterToolCall(
+        { toolName: "bash", params: {}, runId: "r1", toolCallId: "tc1", result: { ok: true } },
+        { sessionKey: "s" },
+        d,
+      );
+
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(warnings.some((w) => w.includes("post-call rejected unexpectedly"))).toBe(true);
+    });
   });
 
   // ---- evictPendingForSession ----

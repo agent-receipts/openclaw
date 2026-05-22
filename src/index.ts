@@ -73,11 +73,16 @@ export default definePluginEntry({
       try {
         emitter = new Emitter({
           socketPath,
+          debugLog: (msg, attrs) =>
+            api.logger.info(`agent-receipts: ${msg} (${JSON.stringify(attrs)})`),
           warnLog: (msg, attrs) =>
             api.logger.warn(`agent-receipts: ${msg} (${JSON.stringify(attrs)})`),
         });
 
         // Probe the socket once at startup for an early actionable warning.
+        // Only warn on non-timeout errors (ENOENT, ECONNREFUSED, EPERM) which
+        // indicate a real problem. Timeout races are normal at startup and don't
+        // necessarily mean the daemon won't work — skip the misleading warning.
         void new Promise<void>((resolve) => {
           let settled = false;
           const settle = (): void => {
@@ -88,11 +93,8 @@ export default definePluginEntry({
           const probe = createConnection({ path: socketPath });
           const timer = setTimeout(() => {
             probe.destroy();
-            api.logger.warn(
-              `agent-receipts: daemon socket unreachable at ${socketPath} (connection timed out)`,
-            );
-            api.logger.warn(
-              "=> Install and start the daemon: https://github.com/agent-receipts/ar/tree/main/daemon",
+            api.logger.info(
+              `agent-receipts: daemon socket probe timed out at ${socketPath}`,
             );
             settle();
           }, DIAL_TIMEOUT_MS);
