@@ -33,7 +33,7 @@ export const SUPPORTED_FRAME_VERSION = "1";
 export const CHANNEL = "openclaw";
 
 /** Dial timeout in milliseconds — caps how long emit() blocks reaching the daemon. */
-export const DIAL_TIMEOUT_MS = 25;
+export const DIAL_TIMEOUT_MS = 500;
 
 /** Write deadline in milliseconds — caps how long a single frame write can block. */
 export const WRITE_TIMEOUT_MS = 100;
