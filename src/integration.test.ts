@@ -193,10 +193,13 @@ describe("integration: full plugin lifecycle", () => {
       const { logs } = setupPlugin();
 
       // The probe is fire-and-forget; wait for it to settle.
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      // Dial timeout is 500ms, so wait 600ms to account for the timeout + settling.
+      await new Promise((resolve) => setTimeout(resolve, 600));
 
       const warnLogs = logs.filter((l) => l.startsWith("WARN:"));
       expect(warnLogs.some((l) => l.includes("socket unreachable") && l.includes(missingSocket))).toBe(true);
+      // Install hint only appears for specific error codes (ENOENT, ECONNREFUSED, EPERM)
+      // A missing socket path triggers ENOENT, so the hint should appear
       expect(warnLogs.some((l) => l.includes("Install and start the daemon"))).toBe(true);
       // Emitter is still constructed and "ready" is logged synchronously before the probe settles
       expect(logs.some((l) => l.includes("emitter ready"))).toBe(true);
