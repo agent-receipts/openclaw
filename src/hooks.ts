@@ -105,7 +105,9 @@ export function beforeToolCall(
       .then((err) => {
         if (err) deps.logger.warn(`agent-receipts: emitter pre-call error: ${err.message}`);
       })
-      .catch(() => {});
+      .catch((err: unknown) => {
+        deps.logger.warn(`agent-receipts: emitter pre-call rejected unexpectedly: ${String(err)}`);
+      });
   } catch (err) {
     deps.logger.warn(
       `agent-receipts: emitter pre-call forward skipped: ${String(err)}`,
@@ -174,7 +176,9 @@ export async function afterToolCall(
       .then((err) => {
         if (err) deps.logger.warn(`agent-receipts: emitter post-call error: ${err.message}`);
       })
-      .catch(() => {});
+      .catch((err: unknown) => {
+        deps.logger.warn(`agent-receipts: emitter post-call rejected unexpectedly: ${String(err)}`);
+      });
   } catch (err) {
     deps.logger.warn(
       `agent-receipts: emitter post-call forward skipped: ${String(err)}`,
