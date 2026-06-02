@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Bump `@agnt-rcpt/sdk-ts` to `^0.11.0`. The SDK dropped its transitive `@hpke/core` dependency in favour of an in-tree RFC 9180 implementation built on `node:crypto` (per [agent-receipts/ar#473](https://github.com/agent-receipts/ar/issues/473)), removing a third-party crypto package from the plugin's supply chain. The `parameters_disclosure` envelope shape and the on-the-wire format are unchanged.
+
+### Added
+
+- `ar_query_receipts` results now include a `disclosed` boolean, set when the daemon attached an HPKE `parameters_disclosure` envelope (its `--parameter-disclosure` mode). The plugin never decrypts the envelope — recovery requires the forensic private key, which lives with the responder, not the agent host.
+
 ### Fixed
 
 - **Socket emission silent failures and misleading startup warnings** ([#148](https://github.com/agent-receipts/openclaw/issues/148)):
