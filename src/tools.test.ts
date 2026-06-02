@@ -2,13 +2,16 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
   openStore,
   generateKeyPair,
   createReceipt,
   signReceipt,
   hashReceipt,
+  encryptDisclosure,
+  decryptDisclosure,
+  generateForensicKeyPair,
   type ReceiptStore,
   type RiskLevel,
   type OutcomeStatus,
@@ -18,6 +21,7 @@ import {
   createVerifyChainTool,
   createVerifyChainToolFactory,
 } from "./tools.js";
+import { openDaemonStore } from "./daemon-store.js";
 
 // ---- Test fixture helpers ----
 
@@ -506,5 +510,158 @@ describe("ar_verify_chain", () => {
     expect(result.content[0].text).toContain("is valid");
     const data = JSON.parse(result.content[1].text);
     expect(data.valid).toBe(true);
+  });
+});
+
+// ---- HPKE parameter disclosure: cross-engine read path ----
+//
+// The daemon (Go) WRITES the HPKE `parameters_disclosure` envelope into the
+// SQLite DB; the plugin READS it back through the TS SDK's strict zod schema
+// (which `store.query()` / `verifyStoredChain()` run on every load). These
+// tests pin that an envelope of the shape the daemon emits is accepted on the
+// read path, that the Ed25519 signature commits to it, and that the ciphertext
+// stays recoverable — but only with the forensic private key, which lives with
+// the responder, not here. The plugin itself never decrypts.
+
+describe("HPKE parameter disclosure — cross-engine read path", () => {
+  let tempDir: string;
+  let dbPath: string;
+  let pubKeyPath: string;
+  let keys: ReturnType<typeof generateKeyPair>;
+  let forensic: Awaited<ReturnType<typeof generateForensicKeyPair>>;
+  let kid: string;
+  let writableStore: ReceiptStore;
+
+  beforeEach(async () => {
+    tempDir = join(tmpdir(), `ar-test-${randomUUID()}`);
+    mkdirSync(tempDir, { recursive: true });
+    dbPath = join(tempDir, "receipts.db");
+    pubKeyPath = join(tempDir, "signing.key.pub");
+    keys = generateKeyPair();
+    writeFileSync(pubKeyPath, keys.publicKey);
+    forensic = await generateForensicKeyPair();
+    // kid = sha256: + lowercase hex SHA-256 of the raw 32-byte public key,
+    // matching the fingerprint the daemon writes (see parameter-disclosure spec).
+    kid = `sha256:${createHash("sha256").update(forensic.publicKey).digest("hex")}`;
+    writableStore = openStore(dbPath);
+  });
+
+  afterEach(() => {
+    writableStore.close();
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  // Insert a receipt whose action carries an HPKE disclosure envelope encrypted
+  // to the forensic public key — the shape the daemon writes when its
+  // --parameter-disclosure mode fires. Returns the stored receipt hash.
+  async function insertDisclosedReceipt(opts: {
+    seq: number;
+    chainId: string;
+    timestamp: string;
+    previousHash: string | null;
+    params: Record<string, unknown>;
+  }): Promise<string> {
+    const envelope = await encryptDisclosure(opts.params, forensic.publicKey, kid);
+    const unsigned = createReceipt({
+      issuer: { id: "did:openclaw:test-agent" },
+      principal: { id: "did:session:test-session" },
+      action: {
+        type: "system.command.execute",
+        risk_level: "high",
+        target: { system: "openclaw", resource: "run_command" },
+        parameters_hash: "abc123",
+        parameters_disclosure: envelope,
+      },
+      outcome: { status: "success" },
+      chain: {
+        sequence: opts.seq,
+        previous_receipt_hash: opts.previousHash,
+        chain_id: opts.chainId,
+      },
+      actionTimestamp: opts.timestamp,
+    });
+    const signed = signReceipt(unsigned, keys.privateKey, "did:openclaw:test-agent#key-1");
+    const h = hashReceipt(signed);
+    writableStore.insert(signed, h);
+    return h;
+  }
+
+  it("flags disclosed receipts in ar_query_receipts and accepts the daemon envelope shape", async () => {
+    await insertDisclosedReceipt({
+      seq: 1,
+      chainId: "chain-d",
+      timestamp: "2024-01-01T10:00:00.000Z",
+      previousHash: null,
+      params: { command: "rm -rf /tmp/x", cwd: "/home/me" },
+    });
+    insertReceiptAt(writableStore, keys.privateKey, {
+      seq: 2,
+      chainId: "chain-d",
+      timestamp: "2024-01-01T11:00:00.000Z",
+      previousHash: "h1",
+      actionType: "filesystem.file.read",
+    });
+
+    const tool = createQueryReceiptsTool({ daemonDbPath: dbPath, daemonPublicKeyPath: pubKeyPath });
+    const result = await tool.execute("tc-q", {});
+    const data = JSON.parse(result.content[0].text);
+
+    const disclosedByAction = Object.fromEntries(
+      data.results.map((r: { action: string; disclosed: boolean }) => [r.action, r.disclosed]),
+    );
+    expect(disclosedByAction["system.command.execute"]).toBe(true);
+    expect(disclosedByAction["filesystem.file.read"]).toBe(false);
+  });
+
+  it("verifies a chain whose receipts carry HPKE disclosure envelopes", async () => {
+    const h1 = await insertDisclosedReceipt({
+      seq: 1,
+      chainId: "chain-d",
+      timestamp: "2024-01-01T10:00:00.000Z",
+      previousHash: null,
+      params: { command: "echo hi" },
+    });
+    await insertDisclosedReceipt({
+      seq: 2,
+      chainId: "chain-d",
+      timestamp: "2024-01-01T11:00:00.000Z",
+      previousHash: h1,
+      params: { command: "cat secret" },
+    });
+
+    const tool = createVerifyChainTool({ daemonDbPath: dbPath, daemonPublicKeyPath: pubKeyPath });
+    const result = await tool.execute("tc-v", { chain_id: "chain-d" });
+
+    const data = JSON.parse(result.content[1].text);
+    expect(data.valid).toBe(true);
+    expect(data.length).toBe(2);
+    for (const r of data.receipts) {
+      expect(r.signature_valid).toBe(true);
+      expect(r.hash_link_valid).toBe(true);
+    }
+  });
+
+  it("keeps the disclosed parameters recoverable only with the forensic private key", async () => {
+    const params = { command: "rm -rf /tmp/x", cwd: "/home/me" };
+    await insertDisclosedReceipt({
+      seq: 1,
+      chainId: "chain-d",
+      timestamp: "2024-01-01T10:00:00.000Z",
+      previousHash: null,
+      params,
+    });
+
+    const store = openDaemonStore(dbPath);
+    try {
+      const [receipt] = store.query({});
+      const envelope = receipt!.credentialSubject.action.parameters_disclosure;
+      expect(envelope).toBeDefined();
+      // The forensic key holder (off-host) recovers the plaintext; the plugin
+      // never performs this step.
+      const recovered = await decryptDisclosure(envelope!, forensic.privateKey);
+      expect(recovered).toEqual(params);
+    } finally {
+      store.close();
+    }
   });
 });

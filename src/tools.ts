@@ -148,6 +148,12 @@ export function createQueryReceiptsToolFactory(deps: ToolDeps) {
             status: r.credentialSubject.outcome.status,
             sequence: r.credentialSubject.chain.sequence,
             timestamp: r.credentialSubject.action.timestamp,
+            // True when the daemon attached an HPKE parameters_disclosure
+            // envelope (its --parameter-disclosure mode). The plugin never
+            // decrypts it — recovery needs the forensic private key, which
+            // lives with the responder, not the agent host. This flag only
+            // signals that the parameters are recoverable by that key holder.
+            disclosed: r.credentialSubject.action.parameters_disclosure !== undefined,
           })),
         };
 
