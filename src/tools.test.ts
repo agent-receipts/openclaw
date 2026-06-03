@@ -654,11 +654,12 @@ describe("HPKE parameter disclosure — cross-engine read path", () => {
     const store = openDaemonStore(dbPath);
     try {
       const [receipt] = store.query({});
-      const envelope = receipt!.credentialSubject.action.parameters_disclosure;
-      expect(envelope).toBeDefined();
+      expect(receipt).toBeDefined();
+      const envelope = receipt.credentialSubject.action.parameters_disclosure;
+      if (!envelope) throw new Error("expected a disclosure envelope on the stored receipt");
       // The forensic key holder (off-host) recovers the plaintext; the plugin
       // never performs this step.
-      const recovered = await decryptDisclosure(envelope!, forensic.privateKey);
+      const recovered = await decryptDisclosure(envelope, forensic.privateKey);
       expect(recovered).toEqual(params);
     } finally {
       store.close();
