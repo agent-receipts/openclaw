@@ -42,7 +42,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@agnt-rcpt/sdk-ts": "^0.11.0",
+    "@agnt-rcpt/sdk-ts": "^0.11.1",
     "@sinclair/typebox": "0.34.49"
   },
   "devDependencies": {

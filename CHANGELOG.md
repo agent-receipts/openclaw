@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Bump `@agnt-rcpt/sdk-ts` to `^0.11.0`. The SDK dropped its transitive `@hpke/core` dependency in favour of an in-tree RFC 9180 implementation built on `node:crypto` (per [agent-receipts/ar#473](https://github.com/agent-receipts/ar/issues/473)), removing a third-party crypto package from the plugin's supply chain. The `parameters_disclosure` envelope shape and the on-the-wire format are unchanged.
+- Bump `@agnt-rcpt/sdk-ts` to `^0.11.1` (superseding the `^0.10.0` dependabot bump). As of 0.11.0 the SDK dropped its transitive `@hpke/core` dependency in favour of an in-tree RFC 9180 implementation built on `node:crypto` (per [agent-receipts/ar#473](https://github.com/agent-receipts/ar/issues/473)), removing a third-party crypto package from the plugin's supply chain — `^0.10.0` still resolved `@hpke/core` transitively, `^0.11.1` does not. The `parameters_disclosure` envelope shape and the on-the-wire format are unchanged.
 
 ### Added
 
