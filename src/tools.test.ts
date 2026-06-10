@@ -15,6 +15,7 @@ import {
   type ReceiptStore,
   type RiskLevel,
   type OutcomeStatus,
+  type DisclosureEnvelope,
 } from "@agnt-rcpt/sdk-ts";
 import {
   createQueryReceiptsTool,
@@ -41,6 +42,7 @@ function insertReceiptAt(
     actionType?: string;
     riskLevel?: RiskLevel;
     status?: OutcomeStatus;
+    disclosure?: DisclosureEnvelope;
   },
 ): string {
   const unsigned = createReceipt({
@@ -51,6 +53,7 @@ function insertReceiptAt(
       risk_level: opts.riskLevel ?? "low",
       target: { system: "openclaw", resource: "read_file" },
       parameters_hash: "abc123",
+      ...(opts.disclosure ? { parameters_disclosure: opts.disclosure } : {}),
     },
     outcome: {
       status: opts.status ?? "success",
@@ -67,6 +70,15 @@ function insertReceiptAt(
   const h = hashReceipt(signed);
   store.insert(signed, h);
   return h;
+}
+
+/**
+ * Forensic-key fingerprint: "sha256:" + lowercase hex SHA-256 of the raw 32-byte
+ * X25519 public key — the same convention the daemon uses to derive a recipient
+ * `kid` (see the parameter-disclosure spec).
+ */
+function forensicKid(publicKey: Uint8Array): string {
+  return `sha256:${createHash("sha256").update(publicKey).digest("hex")}`;
 }
 
 // ---- ar_query_receipts ----
@@ -540,9 +552,7 @@ describe("HPKE parameter disclosure — cross-engine read path", () => {
     keys = generateKeyPair();
     writeFileSync(pubKeyPath, keys.publicKey);
     forensic = await generateForensicKeyPair();
-    // kid = sha256: + lowercase hex SHA-256 of the raw 32-byte public key,
-    // matching the fingerprint the daemon writes (see parameter-disclosure spec).
-    kid = `sha256:${createHash("sha256").update(forensic.publicKey).digest("hex")}`;
+    kid = forensicKid(forensic.publicKey);
     writableStore = openStore(dbPath);
   });
 
@@ -562,28 +572,15 @@ describe("HPKE parameter disclosure — cross-engine read path", () => {
     params: Record<string, unknown>;
   }): Promise<string> {
     const envelope = await encryptDisclosure(opts.params, forensic.publicKey, kid);
-    const unsigned = createReceipt({
-      issuer: { id: "did:openclaw:test-agent" },
-      principal: { id: "did:session:test-session" },
-      action: {
-        type: "system.command.execute",
-        risk_level: "high",
-        target: { system: "openclaw", resource: "run_command" },
-        parameters_hash: "abc123",
-        parameters_disclosure: envelope,
-      },
-      outcome: { status: "success" },
-      chain: {
-        sequence: opts.seq,
-        previous_receipt_hash: opts.previousHash,
-        chain_id: opts.chainId,
-      },
-      actionTimestamp: opts.timestamp,
+    return insertReceiptAt(writableStore, keys.privateKey, {
+      seq: opts.seq,
+      chainId: opts.chainId,
+      timestamp: opts.timestamp,
+      previousHash: opts.previousHash,
+      actionType: "system.command.execute",
+      riskLevel: "high",
+      disclosure: envelope,
     });
-    const signed = signReceipt(unsigned, keys.privateKey, "did:openclaw:test-agent#key-1");
-    const h = hashReceipt(signed);
-    writableStore.insert(signed, h);
-    return h;
   }
 
   it("flags disclosed receipts in ar_query_receipts and accepts the daemon envelope shape", async () => {
@@ -638,6 +635,7 @@ describe("HPKE parameter disclosure — cross-engine read path", () => {
     for (const r of data.receipts) {
       expect(r.signature_valid).toBe(true);
       expect(r.hash_link_valid).toBe(true);
+      expect(r.sequence_valid).toBe(true);
     }
   });
 
@@ -657,10 +655,17 @@ describe("HPKE parameter disclosure — cross-engine read path", () => {
       expect(receipt).toBeDefined();
       const envelope = receipt.credentialSubject.action.parameters_disclosure;
       if (!envelope) throw new Error("expected a disclosure envelope on the stored receipt");
+      // The stored envelope carries the forensic key fingerprint a responder uses
+      // to locate matching receipts.
+      expect(envelope.recipients[0].kid).toBe(kid);
       // The forensic key holder (off-host) recovers the plaintext; the plugin
       // never performs this step.
       const recovered = await decryptDisclosure(envelope, forensic.privateKey);
       expect(recovered).toEqual(params);
+      // Exclusivity: an unrelated forensic key cannot recover the parameters —
+      // the AEAD tag fails to authenticate, so decryption rejects.
+      const otherForensic = await generateForensicKeyPair();
+      await expect(decryptDisclosure(envelope, otherForensic.privateKey)).rejects.toThrow();
     } finally {
       store.close();
     }
