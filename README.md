@@ -242,7 +242,7 @@ Default paths follow the daemon's own resolution: `AGENTRECEIPTS_DB` env var →
 
 ## Daemon setup
 
-The [agent-receipts daemon](https://agentreceipts.ai/getting-started/daemon-setup/) must be installed and running locally. Frames are forwarded fire-and-forget — if the socket is unreachable at startup, a warning is logged. Per-frame delivery failures drop silently; no receipts are recorded while the daemon is absent.
+The [agent-receipts daemon](https://obsigna.dev/getting-started/daemon-setup/) must be installed and running locally. Frames are forwarded fire-and-forget — if the socket is unreachable at startup, a warning is logged. Per-frame delivery failures drop silently; no receipts are recorded while the daemon is absent.
 
 **macOS (Homebrew — recommended):**
 
@@ -273,7 +273,7 @@ Environment=XDG_RUNTIME_DIR=/run/user/1001   # replace 1001 with: id -u openclaw
 
 Restart the gateway after saving.
 
-Full daemon documentation is at [agentreceipts.ai/getting-started/daemon-setup/](https://agentreceipts.ai/getting-started/daemon-setup/).
+Full daemon documentation is at [obsigna.dev/getting-started/daemon-setup/](https://obsigna.dev/getting-started/daemon-setup/).
 
 ## Upgrading from ≤ 0.8.0 (Flavor A → Flavor B)
 
@@ -320,6 +320,8 @@ pnpm test:coverage     # with V8 coverage
 
 | Repository | Description |
 |:---|:---|
+| [agentreceipts.ai](https://agentreceipts.ai) | Protocol site — specification and reference |
+| [obsigna.dev](https://obsigna.dev) | Tooling docs — SDKs, MCP proxy, hook, dashboard, and the OpenClaw plugin |
 | [agent-receipts/spec](https://github.com/agent-receipts/ar/tree/main/spec) | Protocol specification, JSON Schemas, canonical taxonomy |
 | [agent-receipts/sdk-ts](https://github.com/agent-receipts/ar/tree/main/sdk/ts) | TypeScript SDK |
 | [agent-receipts/sdk-py](https://github.com/agent-receipts/ar/tree/main/sdk/py) | Python SDK ([PyPI](https://pypi.org/project/agent-receipts/)) |
