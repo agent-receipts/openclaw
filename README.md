@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/agent-receipts-openclaw-badge.png)](https://mseep.ai/app/agent-receipts-openclaw)
+
 <div align="center">
 
 # openclaw-agent-receipts
