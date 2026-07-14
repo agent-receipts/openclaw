@@ -43,13 +43,13 @@
   },
   "dependencies": {
     "@agnt-rcpt/sdk-ts": "^0.12.0",
-    "@sinclair/typebox": "0.34.49"
+    "@sinclair/typebox": "0.34.51"
   },
   "devDependencies": {
     "@types/node": "^26.1.0",
     "@vitest/coverage-v8": "^4.1.2",
     "openclaw": "*",
-    "typescript": "^6.0.2",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.4"
   },
   "peerDependencies": {
