@@ -43,7 +43,7 @@
   },
   "dependencies": {
     "@agnt-rcpt/sdk-ts": "^0.12.0",
-    "@sinclair/typebox": "0.34.51"
+    "@sinclair/typebox": "0.34.52"
   },
   "devDependencies": {
     "@types/node": "^26.1.0",
